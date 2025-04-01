@@ -28,9 +28,9 @@ Add the following dependency to your Spring Boot project's `pom.xml` file:
 
 ```xml
 <dependency>
-    <groupId>com.nolimit35.spring-fast</groupId>
+    <groupId>com.nolimit35.springkit</groupId>
     <artifactId>exception-notify</artifactId>
-    <version>{latest-version}</version>
+    <version>1.0.0-RELEASE</version>
 </dependency>
 ```
 
