@@ -1,28 +1,30 @@
 # Exception-Notify
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.nolimit35.spring-fast/exception-notify.svg)](https://search.maven.org/search?q=g:com.nolimit35.spring-fast%20AND%20a:exception-notify)
+[![Maven Central](https://img.shields.io/maven-central/v/com.nolimit35.springkit/exception-notify.svg)](https://search.maven.org/search?q=g:com.nolimit35.springkit%20AND%20a:exception-notify)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-## 简介
+English | [简体中文](README_CN.md)
 
-Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot 应用中未处理的异常，并通过钉钉或企业微信实时告警通知。它能够自动分析异常堆栈信息，定位到异常发生的源代码文件和行号，并通过 GitHub API 获取代码提交者信息，最终将异常详情、TraceID 以及责任人信息发送到钉钉群或企业微信群，实现异常的实时上报与全链路追踪。
+## Introduction
 
-## 功能特点
+Exception-Notify is a Spring Boot Starter component designed to capture unhandled exceptions in Spring Boot applications and send real-time alerts through DingTalk or WeChat Work. It automatically analyzes exception stack traces, pinpoints the source code file and line number where the exception occurred, and retrieves code committer information through GitHub or Gitee APIs. Finally, it sends exception details, TraceID, and responsible person information to a DingTalk or WeChat Work group, enabling real-time exception reporting and full-chain tracking.
 
-- 自动捕获 Spring Boot 应用中未处理的异常
-- 分析异常堆栈，精确定位异常源码位置（文件名和行号）
-- 通过 GitHub API 或 Gitee API 的 Git Blame 功能获取代码提交者信息
-- 支持与分布式链路追踪系统集成，关联 TraceID
-- 支持通过钉钉机器人和企业微信机器人实时推送异常告警
-- 支持腾讯云日志服务(CLS)的链路追踪
-- 零侵入式设计，仅需添加依赖和简单配置即可使用
-- 支持自定义告警模板和告警规则
+## Features
 
-## 快速开始
+- Automatic capture of unhandled exceptions in Spring Boot applications
+- Stack trace analysis to precisely locate exception source (file name and line number)
+- Retrieval of code committer information via GitHub API or Gitee API's Git Blame feature
+- Integration with distributed tracing systems to correlate TraceID
+- Support for real-time exception alerts via DingTalk robot and WeChat Work robot
+- Support for Tencent Cloud Log Service (CLS) trace linking
+- Zero-intrusion design, requiring only dependency addition and simple configuration
+- Support for custom alert templates and rules
 
-### 1. 添加依赖
+## Quick Start
 
-在你的 Spring Boot 项目的 `pom.xml` 文件中添加以下依赖：
+### 1. Add Dependency
+
+Add the following dependency to your Spring Boot project's `pom.xml` file:
 
 ```xml
 <dependency>
@@ -32,83 +34,83 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 </dependency>
 ```
 
-### 2. 配置参数
+### 2. Configure Parameters
 
-在 `application.yml` 或 `application.properties` 中添加以下配置：
+Add the following configuration to your `application.yml` or `application.properties`:
 
 ```yaml
 exception:
   notify:
-    enabled: true                                # 是否启用异常通知功能
+    enabled: true                                # Enable exception notification
     dingtalk:
-      webhook: https://oapi.dingtalk.com/robot/send?access_token=xxx  # 钉钉机器人 Webhook 地址
-      secret: SEC000000000000000000000000000000000000000000          # 钉钉机器人安全设置的签名
+      webhook: https://oapi.dingtalk.com/robot/send?access_token=xxx  # DingTalk robot webhook URL
+      secret: SEC000000000000000000000000000000000000000000          # DingTalk robot security signature
     wechatwork:
-      webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx  # 企业微信机器人 Webhook 地址
-    # GitHub 配置 (与 Gitee 配置互斥，只能选择其中一种)
+      webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx  # WeChat Work robot webhook URL
+    # GitHub configuration (mutually exclusive with Gitee, choose only one)
     github:
-      token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                # GitHub 访问令牌
-      repo-owner: your-github-username                               # GitHub 仓库所有者
-      repo-name: your-repo-name                                      # GitHub 仓库名称
-      branch: master                                                 # GitHub 仓库分支
-    # Gitee 配置 (与 GitHub 配置互斥，只能选择其中一种)
+      token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                # GitHub access token
+      repo-owner: your-github-username                               # GitHub repository owner
+      repo-name: your-repo-name                                      # GitHub repository name
+      branch: master                                                 # GitHub repository branch
+    # Gitee configuration (mutually exclusive with GitHub, choose only one)
     gitee:
-      token: xxxxxxxxxxxxxxxxxxxxxxx                                 # Gitee 访问令牌
-      repo-owner: your-gitee-username                                # Gitee 仓库所有者
-      repo-name: your-repo-name                                      # Gitee 仓库名称
-      branch: master                                                 # Gitee 仓库分支
+      token: xxxxxxxxxxxxxxxxxxxxxxx                                 # Gitee access token
+      repo-owner: your-gitee-username                                # Gitee repository owner
+      repo-name: your-repo-name                                      # Gitee repository name
+      branch: master                                                 # Gitee repository branch
     tencentcls:
-      region: ap-guangzhou                                           # 腾讯云日志服务(CLS)的地域
-      topic-id: xxx-xxx-xxx                                          # 腾讯云日志服务(CLS)的主题ID
+      region: ap-guangzhou                                           # Tencent Cloud Log Service (CLS) region
+      topic-id: xxx-xxx-xxx                                          # Tencent Cloud Log Service (CLS) topic ID
     trace:
-      enabled: true                                                  # 是否启用链路追踪
-      header-name: X-Trace-Id                                        # 链路追踪 ID 的请求头名称
+      enabled: true                                                  # Enable trace linking
+      header-name: X-Trace-Id                                        # Trace ID request header name
     package-filter:
-      enabled: false                                                 # 是否启用包名过滤
-      include-packages:                                              # 需要解析的包名列表
+      enabled: false                                                 # Enable package name filtering
+      include-packages:                                              # List of packages to include in analysis
         - com.example.app
         - com.example.service
     notification:
-      title-template: "【${appName}】异常告警"                        # 告警标题模板
-      include-stacktrace: true                                       # 是否包含完整堆栈信息
-      max-stacktrace-lines: 10                                       # 堆栈信息最大行数
+      title-template: "【${appName}】Exception Alert"                # Alert title template
+      include-stacktrace: true                                       # Include full stack trace
+      max-stacktrace-lines: 10                                       # Maximum number of stack trace lines
     environment:
-      report-from: test,prod                                         # 需要上报异常的环境列表，多个环境用逗号分隔
+      report-from: test,prod                                         # List of environments to report exceptions from
 
-# Spring 配置
+# Spring configuration
 spring:
-  # 应用名称，用于告警标题
+  # Application name, used in alert title
   application:
     name: YourApplicationName
-  # 当前环境配置，会自动用于确定异常通知的当前环境
+  # Current environment configuration, used to determine exception notification environment
   profiles:
-    active: dev                                                      # 当前激活的环境配置
+    active: dev                                                      # Current active environment
 ```
 
-> **注意**：当前环境会自动从 Spring 的 `spring.profiles.active` 属性中读取，无需手动设置。只有在 `exception.notify.environment.report-from` 列表中的环境才会上报异常，默认只上报 test 和 prod 环境的异常。
+> **Note**: The current environment is automatically read from Spring's `spring.profiles.active` property, so manual setting is not required. Exceptions are only reported from environments listed in `exception.notify.environment.report-from`. By default, exceptions are only reported from test and prod environments.
 
-### 3. 启动应用
+### 3. Start the Application
 
-启动你的 Spring Boot 应用，Exception-Notify 将自动注册全局异常处理器，捕获未处理的异常并发送告警。
+Start your Spring Boot application, and Exception-Notify will automatically register a global exception handler to capture unhandled exceptions and send alerts.
 
-## 告警示例
+## Alert Example
 
-当应用发生未处理的异常时，钉钉群或企业微信群将收到类似以下格式的告警消息：
+When an unhandled exception occurs in the application, a message like the following will be sent to the DingTalk or WeChat Work group:
 
 ```
-【服务名称】异常告警
+【Service Name】Exception Alert
 -------------------------------
-异常时间：2023-03-17 14:30:45
-异常类型：java.lang.NullPointerException
-异常描述：Cannot invoke "String.length()" because "str" is null
-异常位置：com.example.service.UserService.processData(UserService.java:42)
-当前环境：prod
-代码提交者：张三 (zhangsan@example.com)
-最后提交时间：2023-03-15 10:23:18
-TraceID：7b2d1e8f9c3a5b4d6e8f9c3a5b4d6e8f
-云日志链路：https://console.cloud.tencent.com/cls/search?region=ap-guangzhou&topic_id=xxx-xxx-xxx&interactiveQueryBase64=xxxx
+Exception Time: 2023-03-17 14:30:45
+Exception Type: java.lang.NullPointerException
+Exception Message: Cannot invoke "String.length()" because "str" is null
+Exception Location: com.example.service.UserService.processData(UserService.java:42)
+Current Environment: prod
+Code Committer: John Doe (johndoe@example.com)
+Last Commit Time: 2023-03-15 10:23:18
+TraceID: 7b2d1e8f9c3a5b4d6e8f9c3a5b4d6e8f
+Cloud Log Link: https://console.cloud.tencent.com/cls/search?region=ap-guangzhou&topic_id=xxx-xxx-xxx&interactiveQueryBase64=xxxx
 -------------------------------
-堆栈信息：
+Stack Trace:
 java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is null
     at com.example.service.UserService.processData(UserService.java:42)
     at com.example.controller.UserController.getData(UserController.java:28)
@@ -116,93 +118,93 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
     ...
 ```
 
-## 高级配置
+## Advanced Configuration
 
-### 环境配置
+### Environment Configuration
 
-你可以通过配置 `exception.notify.environment.report-from` 属性来指定哪些环境需要上报异常：
+You can specify which environments should report exceptions by configuring the `exception.notify.environment.report-from` property:
 
 ```yaml
 exception:
   notify:
     environment:
-      report-from: dev,test,prod  # 在开发、测试和生产环境都上报异常
+      report-from: dev,test,prod  # Report exceptions from development, test, and production environments
 ```
 
-默认情况下，组件只会在 test 和 prod 环境上报异常，而在 dev 环境不上报。当前环境会自动从 Spring 的 `spring.profiles.active` 属性中读取。
+By default, the component only reports exceptions from test and prod environments, but not from the dev environment. The current environment is automatically read from Spring's `spring.profiles.active` property.
 
-### 包名过滤配置
+### Package Filter Configuration
 
-你可以通过配置 `exception.notify.package-filter` 来控制异常堆栈分析时只关注特定包名下的代码：
+You can control which package names to focus on during exception stack trace analysis by configuring `exception.notify.package-filter`:
 
 ```yaml
 exception:
   notify:
     package-filter:
-      enabled: true                              # 启用包名过滤功能
-      include-packages:                          # 需要解析的包名列表
+      enabled: true                              # Enable package filter
+      include-packages:                          # List of packages to analyze
         - com.example.app
         - com.example.service
 ```
 
-当启用包名过滤功能后，异常分析器会优先从指定的包名列表中寻找异常堆栈信息，这对于定位业务代码中的问题特别有用。如果没有找到匹配的堆栈信息，会使用原始的过滤逻辑。
+When package filtering is enabled, the exception analyzer will prioritize finding stack trace information from the specified package list, which is particularly useful for locating problems in business code. If no matching stack information is found, the original filtering logic will be used.
 
-### 腾讯云日志服务(CLS)集成
+### Tencent Cloud Log Service (CLS) Integration
 
-如果你使用了腾讯云日志服务(CLS)，可以配置相关参数来在异常告警中添加云日志链路：
+If you use Tencent Cloud Log Service (CLS), you can configure the relevant parameters to add cloud log links to exception alerts:
 
 ```yaml
 exception:
   notify:
     tencentcls:
-      region: ap-guangzhou             # 腾讯云日志服务(CLS)的地域
-      topic-id: xxx-xxx-xxx            # 腾讯云日志服务(CLS)的主题ID
+      region: ap-guangzhou             # Tencent Cloud Log Service (CLS) region
+      topic-id: xxx-xxx-xxx            # Tencent Cloud Log Service (CLS) topic ID
     trace:
-      enabled: true                    # 启用链路追踪
+      enabled: true                    # Enable trace linking
 ```
 
-当同时配置了 CLS 参数和链路追踪，异常告警消息中会包含指向云日志的链接，方便快速查看完整的日志上下文。
+When both CLS parameters and trace linking are configured, the exception alert message will include a link to the cloud logs, making it easy to quickly view the complete log context.
 
-### 代码提交者信息集成
+### Code Committer Information Integration
 
-Exception-Notify 支持通过 GitHub API 或 Gitee API 获取代码提交者信息。你需要选择其中一种方式进行配置，不能同时配置两者：
+Exception-Notify supports retrieving code committer information via either GitHub API or Gitee API. You need to choose one of these methods for configuration, as they cannot be used simultaneously:
 
 ```yaml
 exception:
   notify:
-    # 使用 GitHub API 获取代码提交者信息
+    # Use GitHub API to get code committer information
     github:
-      token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # GitHub 访问令牌
-      repo-owner: your-github-username                 # GitHub 仓库所有者
-      repo-name: your-repo-name                        # GitHub 仓库名称
-      branch: master                                   # GitHub 仓库分支
+      token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx  # GitHub access token
+      repo-owner: your-github-username                 # GitHub repository owner
+      repo-name: your-repo-name                        # GitHub repository name
+      branch: master                                   # GitHub repository branch
 ```
 
-或者：
+Or:
 
 ```yaml
 exception:
   notify:
-    # 使用 Gitee API 获取代码提交者信息
+    # Use Gitee API to get code committer information
     gitee:
-      token: xxxxxxxxxxxxxxxxxxxxxxx                   # Gitee 访问令牌
-      repo-owner: your-gitee-username                  # Gitee 仓库所有者
-      repo-name: your-repo-name                        # Gitee 仓库名称
-      branch: master                                   # Gitee 仓库分支
+      token: xxxxxxxxxxxxxxxxxxxxxxx                   # Gitee access token
+      repo-owner: your-gitee-username                  # Gitee repository owner
+      repo-name: your-repo-name                        # Gitee repository name
+      branch: master                                   # Gitee repository branch
 ```
 
-> **注意**：GitHub 和 Gitee 配置是互斥的，系统只能从一个代码托管平台读取提交信息。如果同时配置了两者，将优先使用 Gitee 配置。
+> **Note**: GitHub and Gitee configurations are mutually exclusive; the system can only read commit information from one code hosting platform. If both are configured, the Gitee configuration will be used by default.
 
-### 自定义异常过滤
+### Custom Exception Filtering
 
-你可以通过实现 `ExceptionFilter` 接口并注册为 Spring Bean 来自定义哪些异常需要告警：
+You can customize which exceptions should trigger alerts by implementing the `ExceptionFilter` interface and registering it as a Spring Bean:
 
 ```java
 @Component
 public class CustomExceptionFilter implements ExceptionFilter {
     @Override
     public boolean shouldNotify(Throwable throwable) {
-        // 忽略特定类型的异常
+        // Ignore specific types of exceptions
         if (throwable instanceof ResourceNotFoundException) {
             return false;
         }
@@ -211,41 +213,41 @@ public class CustomExceptionFilter implements ExceptionFilter {
 }
 ```
 
-### 自定义告警内容
+### Custom Alert Content
 
-通过实现 `NotificationFormatter` 接口并注册为 Spring Bean 来自定义告警内容格式：
+You can customize the alert content format by implementing the `NotificationFormatter` interface and registering it as a Spring Bean:
 
 ```java
 @Component
 public class CustomNotificationFormatter implements NotificationFormatter {
     @Override
     public String format(ExceptionInfo exceptionInfo) {
-        // 自定义告警内容格式
-        return "自定义告警内容";
+        // Custom alert content format
+        return "Custom alert content";
     }
 }
 ```
 
-## 工作原理
+## How It Works
 
-1. 通过 Spring Boot 的 `@ControllerAdvice` 机制捕获未处理的异常
-2. 分析异常堆栈信息，提取出异常发生的源代码文件和行号
-3. 调用 GitHub API 或 Gitee API 的 Git Blame 接口，获取对应代码行的提交者信息
-4. 从当前请求上下文中提取 TraceID（如果启用了链路追踪）
-5. 将异常信息、代码提交者信息和 TraceID 组装成告警消息
-6. 通过钉钉机器人或企业微信机器人 Webhook 接口发送告警消息到指定群组
+1. Captures unhandled exceptions using Spring Boot's `@ControllerAdvice` mechanism
+2. Analyzes exception stack trace information to extract the source code file and line number where the exception occurred
+3. Calls the GitHub API or Gitee API's Git Blame interface to retrieve committer information for the corresponding code line
+4. Extracts TraceID from the current request context (if trace linking is enabled)
+5. Assembles exception information, code committer information, and TraceID into an alert message
+6. Sends the alert message to the specified group via DingTalk robot or WeChat Work robot Webhook interface
 
-## 注意事项
+## Important Notes
 
-- 需要确保应用有访问 GitHub API 或 Gitee API 的网络权限
-- GitHub Token 或 Gitee Token 需要有仓库的读取权限
-- 钉钉机器人和企业微信机器人需要正确配置安全设置
-- 为了获取准确的代码提交者信息，确保代码仓库与实际部署的代码版本一致
+- Ensure the application has network permission to access GitHub API or Gitee API
+- GitHub Token or Gitee Token must have read permission for the repository
+- DingTalk robot and WeChat Work robot need to be correctly configured with security settings
+- To get accurate code committer information, ensure the code repository version matches the deployed code version
 
-## 贡献指南
+## Contribution Guidelines
 
-欢迎提交 Issue 和 Pull Request 来帮助改进这个项目。
+Issues and Pull Requests are welcome to help improve this project.
 
-## 许可证
+## License
 
-本项目采用 [Apache License 2.0](LICENSE) 许可证。
+This project is licensed under the [Apache License 2.0](LICENSE).
