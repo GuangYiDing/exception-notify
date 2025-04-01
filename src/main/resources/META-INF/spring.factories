@@ -1,0 +1,5 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+com.nolimit35.springfast.config.ExceptionNotifyAutoConfiguration
+
+org.springframework.context.ApplicationListener=\
+com.nolimit35.springfast.config.EnvironmentPostProcessor 

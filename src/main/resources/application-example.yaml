@@ -1,0 +1,45 @@
+exception:
+  notify:
+    enabled: true                                # 是否启用异常通知功能
+    package-filter:
+      enabled: true                              # 是否启用包名过滤功能
+      include-packages:                          # 需要解析的包名列表，启用后只会分析这些包名下的异常堆栈
+        - com.nolimit35.springfast
+    dingtalk:
+      webhook: https://oapi.dingtalk.com/robot/send?access_token=xxx  # 钉钉机器人 Webhook 地址
+      secret: SEC000000000000000000000000000000000000000000          # 钉钉机器人安全设置的签名
+    wechatwork:
+      webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx  # 企业微信机器人 Webhook 地址
+    # GitHub 配置 (与 Gitee 配置互斥，只能选择其中一种)
+    github:
+      token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                # GitHub 访问令牌
+      repo-owner: your-github-username                               # GitHub 仓库所有者
+      repo-name: your-repo-name                                      # GitHub 仓库名称
+      branch: master                                                 # GitHub 仓库分支
+    # Gitee 配置 (与 GitHub 配置互斥，只能选择其中一种)
+    gitee:
+      token: xxxxxxxxxxxxxxxxxxxxxxx                                 # Gitee 访问令牌
+      repo-owner: your-gitee-username                                # Gitee 仓库所有者
+      repo-name: your-repo-name                                      # Gitee 仓库名称
+      branch: master                                                 # Gitee 仓库分支
+    tencentcls:
+      region: ap-guangzhou                                           # 腾讯云日志服务(CLS)的地域
+      topic-id: xxx-xxx-xxx                                          # 腾讯云日志服务(CLS)的主题ID
+    trace:
+      enabled: true                                                  # 是否启用链路追踪
+      header-name: X-Trace-Id                                        # 链路追踪 ID 的请求头名称
+    notification:
+      title-template: "【${appName}】异常告警"                         # 告警标题模板
+      include-stacktrace: true                                       # 是否包含完整堆栈信息
+      max-stacktrace-lines: 10                                       # 堆栈信息最大行数
+    environment:
+      report-from: test,prod                                         # 需要上报异常的环境列表，多个环境用逗号分隔
+
+# Spring 配置
+spring:
+  # 应用名称，用于告警标题
+  application:
+    name: YourApplicationName
+  # 当前环境配置，会自动用于确定异常通知的当前环境
+  profiles:
+    active: dev                                                      # 当前激活的环境配置
