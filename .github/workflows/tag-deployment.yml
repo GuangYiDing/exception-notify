@@ -1,0 +1,63 @@
+name: Tag Deployment
+
+on:
+  push:
+    tags:
+      - 'v*' # This will trigger on any tag that starts with 'v'
+
+jobs:
+  build:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '1.8'
+          distribution: 'temurin'
+          cache: maven
+      
+      - name: Build with Maven
+        run: mvn -B clean package
+      
+      - name: Create GitHub deployment
+        uses: chrnorm/deployment-action@v2
+        id: deployment
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: production
+          ref: ${{ github.ref }}
+          description: "Deployment from tag ${{ github.ref_name }}"
+      
+      - name: Package artifact
+        run: |
+          mkdir -p artifacts
+          cp target/*.jar artifacts/
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> artifacts/metadata.txt
+          echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> artifacts/metadata.txt
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: application-artifacts
+          path: artifacts/
+      
+      - name: Update deployment status (success)
+        if: success()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+          state: 'success'
+      
+      - name: Update deployment status (failure)
+        if: failure()
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+          state: 'failure' 
