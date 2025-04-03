@@ -75,41 +75,7 @@ public class GitLabService extends AbstractGitSourceControlService {
                 String responseBody = response.body().string();
                 JsonNode blameData = objectMapper.readTree(responseBody);
                 
-                // Find the blame range that contains the line
-                for (JsonNode blameRange : blameData) {
-                    JsonNode lines = blameRange.get("lines");
-                    if (lines == null || lines.isEmpty()) {
-                        continue;
-                    }
-                    
-                    // Get the line numbers in this range
-                    int startLine = -1;
-                    int endLine = -1;
-                    
-                    for (int i = 0; i < lines.size(); i++) {
-                        if (startLine == -1) {
-                            startLine = i + 1;  // Line numbers are 1-based
-                        }
-                        endLine = i + 1;
-                    }
-                    
-                    if (lineNumber >= startLine && lineNumber <= endLine) {
-                        JsonNode commit = blameRange.get("commit");
-                        
-                        return CodeAuthorInfo.builder()
-                            .name(commit.get("author_name").asText())
-                            .email(commit.get("author_email").asText())
-                            .lastCommitTime(LocalDateTime.parse(
-                                commit.get("authored_date").asText(),
-                                DateTimeFormatter.ISO_DATE_TIME))
-                            .fileName(fileName)
-                            .lineNumber(lineNumber)
-                            .commitMessage(commit.get("message").asText())
-                            .build();
-                    }
-                }
-                
-                log.warn("Could not find blame information for {}:{}", fileName, lineNumber);
+                return processBlameData(blameData, fileName, lineNumber);
             }
         } catch (IOException e) {
             log.error("Error fetching author information from GitLab", e);
@@ -119,6 +85,52 @@ public class GitLabService extends AbstractGitSourceControlService {
     }
     
     /**
+     * Process the GitLab blame data to extract author information for a specific line
+     *
+     * @param blameData the GitLab blame response data as JsonNode
+     * @param fileName the file name
+     * @param lineNumber the line number to get author for
+     * @return the author information or null if not found
+     */
+    private CodeAuthorInfo processBlameData(JsonNode blameData, String fileName, int lineNumber) {
+        // Find the blame range that contains the line
+        for (JsonNode blameRange : blameData) {
+            JsonNode lines = blameRange.get("lines");
+            if (lines == null || lines.isEmpty()) {
+                continue;
+            }
+            
+            // Get the line numbers in this range
+            int startLine = -1;
+            int endLine = -1;
+            
+            for (int i = 0; i < lines.size(); i++) {
+                if (startLine == -1) {
+                    startLine = i + 1;  // Line numbers are 1-based
+                }
+                endLine = i + 1;
+            }
+            
+            if (lineNumber >= startLine && lineNumber <= endLine) {
+                JsonNode commit = blameRange.get("commit");
+                
+                return CodeAuthorInfo.builder()
+                    .name(commit.get("author_name").asText())
+                    .email(commit.get("author_email").asText())
+                    .lastCommitTime(LocalDateTime.parse(
+                        commit.get("authored_date").asText(),
+                        DateTimeFormatter.ISO_DATE_TIME))
+                    .fileName(fileName)
+                    .lineNumber(lineNumber)
+                    .commitMessage(commit.get("message").asText())
+                    .build();
+            }
+        }
+        
+        return null;
+    }
+
+    /**
      * Validates that the required configuration is present
      * 
      * @param token The API token
@@ -127,6 +139,7 @@ public class GitLabService extends AbstractGitSourceControlService {
      * @param serviceName The name of the service (for logging)
      * @return true if configuration is valid, false otherwise
      */
+    @Override
     protected boolean validateConfiguration(String token, String projectId, String branch, String serviceName) {
         if (token == null || projectId == null || branch == null) {
             log.warn("{} configuration is incomplete. Cannot fetch author information.", serviceName);
