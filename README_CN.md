@@ -7,13 +7,13 @@
 
 ## 简介
 
-Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot 应用中未处理的异常，并通过钉钉或企业微信实时告警通知。它能够自动分析异常堆栈信息，定位到异常发生的源代码文件和行号，并通过 GitHub API 获取代码提交者信息，最终将异常详情、TraceID 以及责任人信息发送到钉钉群或企业微信群，实现异常的实时上报与全链路追踪。
+Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot 应用中未处理的异常，并通过钉钉或企业微信实时告警通知。它能够自动分析异常堆栈信息，定位到异常发生的源代码文件和行号，并通过 GitHub、GitLab 或 Gitee API 获取代码提交者信息，最终将异常详情、TraceID 以及责任人信息发送到钉钉群或企业微信群，实现异常的实时上报与全链路追踪。
 
 ## 功能特点
 
 - 自动捕获 Spring Boot 应用中未处理的异常
 - 分析异常堆栈，精确定位异常源码位置（文件名和行号）
-- 通过 GitHub API 或 Gitee API 的 Git Blame 功能获取代码提交者信息
+- 通过 GitHub API、GitLab API 或 Gitee API 的 Git Blame 功能获取代码提交者信息
 - 支持与分布式链路追踪系统集成，关联 TraceID
 - 支持通过钉钉机器人和企业微信机器人实时推送异常告警
 - 支持腾讯云日志服务(CLS)的链路追踪
@@ -47,13 +47,19 @@ exception:
       secret: SEC000000000000000000000000000000000000000000          # 钉钉机器人安全设置的签名
     wechatwork:
       webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx  # 企业微信机器人 Webhook 地址
-    # GitHub 配置 (与 Gitee 配置互斥，只能选择其中一种)
+    # GitHub 配置 (与 GitLab、Gitee 配置互斥，只能选择其中一种)
     github:
       token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                # GitHub 访问令牌
       repo-owner: your-github-username                               # GitHub 仓库所有者
       repo-name: your-repo-name                                      # GitHub 仓库名称
       branch: master                                                 # GitHub 仓库分支
-    # Gitee 配置 (与 GitHub 配置互斥，只能选择其中一种)
+    # GitLab 配置 (与 GitHub、Gitee 配置互斥，只能选择其中一种)
+    gitlab:
+      token: glpat-xxxxxxxxxxxxxxxxxxxx                              # GitLab 访问令牌
+      project-id: your-project-id-or-path                            # GitLab 项目 ID 或路径
+      base-url: https://gitlab.com/api/v4                            # GitLab API 基础 URL
+      branch: master                                                 # GitLab 仓库分支
+    # Gitee 配置 (与 GitHub、GitLab 配置互斥，只能选择其中一种)
     gitee:
       token: xxxxxxxxxxxxxxxxxxxxxxx                                 # Gitee 访问令牌
       repo-owner: your-gitee-username                                # Gitee 仓库所有者
@@ -167,7 +173,7 @@ exception:
 
 ### 代码提交者信息集成
 
-Exception-Notify 支持通过 GitHub API 或 Gitee API 获取代码提交者信息。你需要选择其中一种方式进行配置，不能同时配置两者：
+Exception-Notify 支持通过 GitHub API、GitLab API 或 Gitee API 获取代码提交者信息。你需要选择其中一种方式进行配置，不能同时配置多者：
 
 ```yaml
 exception:
@@ -185,6 +191,19 @@ exception:
 ```yaml
 exception:
   notify:
+    # 使用 GitLab API 获取代码提交者信息
+    gitlab:
+      token: glpat-xxxxxxxxxxxxxxxxxxxx                # GitLab 访问令牌
+      project-id: your-project-id-or-path              # GitLab 项目 ID 或路径
+      base-url: https://gitlab.com/api/v4              # GitLab API 基础 URL
+      branch: master                                   # GitLab 仓库分支
+```
+
+或者：
+
+```yaml
+exception:
+  notify:
     # 使用 Gitee API 获取代码提交者信息
     gitee:
       token: xxxxxxxxxxxxxxxxxxxxxxx                   # Gitee 访问令牌
@@ -193,7 +212,7 @@ exception:
       branch: master                                   # Gitee 仓库分支
 ```
 
-> **注意**：GitHub 和 Gitee 配置是互斥的，系统只能从一个代码托管平台读取提交信息。如果同时配置了两者，将优先使用 Gitee 配置。
+> **注意**：GitHub、GitLab 和 Gitee 配置是互斥的，系统只能从一个代码托管平台读取提交信息。如果同时配置了多个，将按照 Gitee、GitLab、GitHub 的优先顺序选择。
 
 ### 自定义异常过滤
 
@@ -232,15 +251,15 @@ public class CustomNotificationFormatter implements NotificationFormatter {
 
 1. 通过 Spring Boot 的 `@ControllerAdvice` 机制捕获未处理的异常
 2. 分析异常堆栈信息，提取出异常发生的源代码文件和行号
-3. 调用 GitHub API 或 Gitee API 的 Git Blame 接口，获取对应代码行的提交者信息
+3. 调用 GitHub API、GitLab API 或 Gitee API 的 Git Blame 接口，获取对应代码行的提交者信息
 4. 从当前请求上下文中提取 TraceID（如果启用了链路追踪）
 5. 将异常信息、代码提交者信息和 TraceID 组装成告警消息
 6. 通过钉钉机器人或企业微信机器人 Webhook 接口发送告警消息到指定群组
 
 ## 注意事项
 
-- 需要确保应用有访问 GitHub API 或 Gitee API 的网络权限
-- GitHub Token 或 Gitee Token 需要有仓库的读取权限
+- 需要确保应用有访问 GitHub API、GitLab API 或 Gitee API 的网络权限
+- GitHub Token、GitLab Token 或 Gitee Token 需要有仓库的读取权限
 - 钉钉机器人和企业微信机器人需要正确配置安全设置
 - 为了获取准确的代码提交者信息，确保代码仓库与实际部署的代码版本一致
 

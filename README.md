@@ -7,13 +7,13 @@ English | [简体中文](README_CN.md)
 
 ## Introduction
 
-Exception-Notify is a Spring Boot Starter component designed to capture unhandled exceptions in Spring Boot applications and send real-time alerts through DingTalk or WeChat Work. It automatically analyzes exception stack traces, pinpoints the source code file and line number where the exception occurred, and retrieves code committer information through GitHub or Gitee APIs. Finally, it sends exception details, TraceID, and responsible person information to a DingTalk or WeChat Work group, enabling real-time exception reporting and full-chain tracking.
+Exception-Notify is a Spring Boot Starter component designed to capture unhandled exceptions in Spring Boot applications and send real-time alerts through DingTalk or WeChat Work. It automatically analyzes exception stack traces, pinpoints the source code file and line number where the exception occurred, and retrieves code committer information through GitHub, GitLab or Gitee APIs. Finally, it sends exception details, TraceID, and responsible person information to a DingTalk or WeChat Work group, enabling real-time exception reporting and full-chain tracking.
 
 ## Features
 
 - Automatic capture of unhandled exceptions in Spring Boot applications
 - Stack trace analysis to precisely locate exception source (file name and line number)
-- Retrieval of code committer information via GitHub API or Gitee API's Git Blame feature
+- Retrieval of code committer information via GitHub API, GitLab API or Gitee API's Git Blame feature
 - Integration with distributed tracing systems to correlate TraceID
 - Support for real-time exception alerts via DingTalk robot and WeChat Work robot
 - Support for Tencent Cloud Log Service (CLS) trace linking
@@ -47,13 +47,19 @@ exception:
       secret: SEC000000000000000000000000000000000000000000          # DingTalk robot security signature
     wechatwork:
       webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx  # WeChat Work robot webhook URL
-    # GitHub configuration (mutually exclusive with Gitee, choose only one)
+    # GitHub configuration (choose one of GitHub, GitLab, or Gitee)
     github:
       token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                # GitHub access token
       repo-owner: your-github-username                               # GitHub repository owner
       repo-name: your-repo-name                                      # GitHub repository name
       branch: master                                                 # GitHub repository branch
-    # Gitee configuration (mutually exclusive with GitHub, choose only one)
+    # GitLab configuration (choose one of GitHub, GitLab, or Gitee)
+    gitlab:
+      token: glpat-xxxxxxxxxxxxxxxxxxxx                              # GitLab access token
+      project-id: your-project-id-or-path                            # GitLab project ID or path
+      base-url: https://gitlab.com/api/v4                            # GitLab API base URL
+      branch: master                                                 # GitLab repository branch
+    # Gitee configuration (choose one of GitHub, GitLab, or Gitee)
     gitee:
       token: xxxxxxxxxxxxxxxxxxxxxxx                                 # Gitee access token
       repo-owner: your-gitee-username                                # Gitee repository owner
@@ -167,7 +173,7 @@ When both CLS parameters and trace linking are configured, the exception alert m
 
 ### Code Committer Information Integration
 
-Exception-Notify supports retrieving code committer information via either GitHub API or Gitee API. You need to choose one of these methods for configuration, as they cannot be used simultaneously:
+Exception-Notify supports retrieving code committer information via GitHub API, GitLab API, or Gitee API. You need to choose one of these methods for configuration, as they cannot be used simultaneously:
 
 ```yaml
 exception:
@@ -185,6 +191,19 @@ Or:
 ```yaml
 exception:
   notify:
+    # Use GitLab API to get code committer information
+    gitlab:
+      token: glpat-xxxxxxxxxxxxxxxxxxxx                # GitLab access token
+      project-id: your-project-id-or-path              # GitLab project ID or path
+      base-url: https://gitlab.com/api/v4              # GitLab API base URL
+      branch: master                                   # GitLab repository branch
+```
+
+Or:
+
+```yaml
+exception:
+  notify:
     # Use Gitee API to get code committer information
     gitee:
       token: xxxxxxxxxxxxxxxxxxxxxxx                   # Gitee access token
@@ -193,7 +212,7 @@ exception:
       branch: master                                   # Gitee repository branch
 ```
 
-> **Note**: GitHub and Gitee configurations are mutually exclusive; the system can only read commit information from one code hosting platform. If both are configured, the Gitee configuration will be used by default.
+> **Note**: GitHub, GitLab, and Gitee configurations are mutually exclusive; the system can only read commit information from one code hosting platform. If multiple are configured, preference order is Gitee, then GitLab, then GitHub.
 
 ### Custom Exception Filtering
 

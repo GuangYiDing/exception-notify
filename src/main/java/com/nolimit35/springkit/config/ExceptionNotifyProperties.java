@@ -39,6 +39,11 @@ public class ExceptionNotifyProperties {
     private Gitee gitee = new Gitee();
 
     /**
+     * GitLab configuration
+     */
+    private GitLab gitlab = new GitLab();
+
+    /**
      * Trace configuration
      */
     private Trace trace = new Trace();
@@ -154,6 +159,32 @@ public class ExceptionNotifyProperties {
         
         /**
          * Gitee repository branch
+         */
+        private String branch = "master";
+    }
+
+    /**
+     * GitLab configuration properties
+     */
+    @Data
+    public static class GitLab {
+        /**
+         * GitLab access token
+         */
+        private String token;
+
+        /**
+         * GitLab project id or path
+         */
+        private String projectId;
+
+        /**
+         * GitLab API base URL
+         */
+        private String baseUrl = "https://gitlab.com/api/v4";
+        
+        /**
+         * GitLab repository branch
          */
         private String branch = "master";
     }
