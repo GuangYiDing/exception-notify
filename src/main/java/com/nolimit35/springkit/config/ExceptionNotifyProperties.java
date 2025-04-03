@@ -1,4 +1,4 @@
-package com.nolimit35.springfast.config;
+package com.nolimit35.springkit.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

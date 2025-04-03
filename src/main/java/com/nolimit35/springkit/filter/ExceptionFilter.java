@@ -1,4 +1,4 @@
-package com.nolimit35.springfast.filter;
+package com.nolimit35.springkit.filter;
 
 /**
  * Interface for filtering exceptions

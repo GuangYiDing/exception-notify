@@ -1,8 +1,8 @@
-package com.nolimit35.springfast.formatter;
+package com.nolimit35.springkit.formatter;
 
-import com.nolimit35.springfast.config.ExceptionNotifyProperties;
-import com.nolimit35.springfast.model.CodeAuthorInfo;
-import com.nolimit35.springfast.model.ExceptionInfo;
+import com.nolimit35.springkit.config.ExceptionNotifyProperties;
+import com.nolimit35.springkit.model.CodeAuthorInfo;
+import com.nolimit35.springkit.model.ExceptionInfo;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;
 

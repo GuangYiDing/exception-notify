@@ -1,6 +1,6 @@
-package com.nolimit35.springfast.formatter;
+package com.nolimit35.springkit.formatter;
 
-import com.nolimit35.springfast.model.ExceptionInfo;
+import com.nolimit35.springkit.model.ExceptionInfo;
 
 /**
  * Interface for formatting exception notifications

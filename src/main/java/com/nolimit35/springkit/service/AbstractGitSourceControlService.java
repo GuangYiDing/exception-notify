@@ -1,10 +1,10 @@
-package com.nolimit35.springfast.service;
+package com.nolimit35.springkit.service;
 
 import java.time.format.DateTimeFormatter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nolimit35.springfast.config.ExceptionNotifyProperties;
-import com.nolimit35.springfast.model.CodeAuthorInfo;
+import com.nolimit35.springkit.config.ExceptionNotifyProperties;
+import com.nolimit35.springkit.model.CodeAuthorInfo;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 

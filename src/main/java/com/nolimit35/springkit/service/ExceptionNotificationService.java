@@ -1,11 +1,10 @@
-package com.nolimit35.springfast.service;
+package com.nolimit35.springkit.service;
 
-import com.nolimit35.springfast.config.ExceptionNotifyProperties;
-import com.nolimit35.springfast.filter.ExceptionFilter;
-import com.nolimit35.springfast.formatter.NotificationFormatter;
-import com.nolimit35.springfast.model.ExceptionInfo;
+import com.nolimit35.springkit.config.ExceptionNotifyProperties;
+import com.nolimit35.springkit.filter.ExceptionFilter;
+import com.nolimit35.springkit.formatter.NotificationFormatter;
+import com.nolimit35.springkit.model.ExceptionInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.Strings;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestAttributes;

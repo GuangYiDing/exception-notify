@@ -1,4 +1,4 @@
-package com.nolimit35.springfast.model;
+package com.nolimit35.springkit.model;
 
 import lombok.Builder;
 import lombok.Data;

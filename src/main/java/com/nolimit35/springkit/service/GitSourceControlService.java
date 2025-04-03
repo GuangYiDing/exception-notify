@@ -1,6 +1,6 @@
-package com.nolimit35.springfast.service;
+package com.nolimit35.springkit.service;
 
-import com.nolimit35.springfast.model.CodeAuthorInfo;
+import com.nolimit35.springkit.model.CodeAuthorInfo;
 
 /**
  * Interface for Git source control services (GitHub, Gitee, etc.)

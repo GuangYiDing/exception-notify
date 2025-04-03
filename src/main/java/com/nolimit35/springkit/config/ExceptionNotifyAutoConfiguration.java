@@ -1,11 +1,11 @@
-package com.nolimit35.springfast.config;
+package com.nolimit35.springkit.config;
 
-import com.nolimit35.springfast.filter.DefaultExceptionFilter;
-import com.nolimit35.springfast.filter.ExceptionFilter;
-import com.nolimit35.springfast.formatter.DefaultNotificationFormatter;
-import com.nolimit35.springfast.formatter.NotificationFormatter;
-import com.nolimit35.springfast.handler.GlobalExceptionHandler;
-import com.nolimit35.springfast.service.*;
+import com.nolimit35.springkit.filter.DefaultExceptionFilter;
+import com.nolimit35.springkit.filter.ExceptionFilter;
+import com.nolimit35.springkit.formatter.DefaultNotificationFormatter;
+import com.nolimit35.springkit.formatter.NotificationFormatter;
+import com.nolimit35.springkit.handler.GlobalExceptionHandler;
+import com.nolimit35.springkit.service.*;
 
 import java.util.List;
 

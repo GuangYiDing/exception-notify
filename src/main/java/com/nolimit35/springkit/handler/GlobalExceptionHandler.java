@@ -1,6 +1,6 @@
-package com.nolimit35.springfast.handler;
+package com.nolimit35.springkit.handler;
 
-import com.nolimit35.springfast.service.ExceptionNotificationService;
+import com.nolimit35.springkit.service.ExceptionNotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.core.Ordered;

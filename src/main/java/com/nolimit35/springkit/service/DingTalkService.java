@@ -1,7 +1,7 @@
-package com.nolimit35.springfast.service;
+package com.nolimit35.springkit.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nolimit35.springfast.config.ExceptionNotifyProperties;
+import com.nolimit35.springkit.config.ExceptionNotifyProperties;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.stereotype.Service;

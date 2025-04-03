@@ -1,4 +1,4 @@
-package com.nolimit35.springfast.filter;
+package com.nolimit35.springkit.filter;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Component;

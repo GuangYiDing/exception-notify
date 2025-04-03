@@ -1,4 +1,4 @@
-package com.nolimit35.springfast.config;
+package com.nolimit35.springkit.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;

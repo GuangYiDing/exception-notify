@@ -1,4 +1,4 @@
-package com.nolimit35.springfast.service;
+package com.nolimit35.springkit.service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -6,8 +6,8 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.nolimit35.springfast.config.ExceptionNotifyProperties;
-import com.nolimit35.springfast.model.CodeAuthorInfo;
+import com.nolimit35.springkit.config.ExceptionNotifyProperties;
+import com.nolimit35.springkit.model.CodeAuthorInfo;
 
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Request;

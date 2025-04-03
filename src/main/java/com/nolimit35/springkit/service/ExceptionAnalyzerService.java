@@ -1,8 +1,8 @@
-package com.nolimit35.springfast.service;
+package com.nolimit35.springkit.service;
 
-import com.nolimit35.springfast.config.ExceptionNotifyProperties;
-import com.nolimit35.springfast.model.CodeAuthorInfo;
-import com.nolimit35.springfast.model.ExceptionInfo;
+import com.nolimit35.springkit.config.ExceptionNotifyProperties;
+import com.nolimit35.springkit.model.CodeAuthorInfo;
+import com.nolimit35.springkit.model.ExceptionInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
