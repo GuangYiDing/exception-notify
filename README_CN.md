@@ -30,7 +30,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 <dependency>
     <groupId>com.nolimit35.springkit</groupId>
     <artifactId>exception-notify</artifactId>
-    <version>1.1.0-RELEASE</version>
+    <version>1.1.1-RELEASE</version>
 </dependency>
 ```
 
