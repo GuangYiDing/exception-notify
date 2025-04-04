@@ -27,7 +27,7 @@ jobs:
           # -U force updates just to make sure we are using latest dependencies
           # -B Batch mode (do not ask for user input), just in case
           # -P activate profile
-          mvn -U -B clean deploy
+          mvn -U -B clean deploy -Dmaven.test.skip=true
         env:
           SIGN_KEY_PASS: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}

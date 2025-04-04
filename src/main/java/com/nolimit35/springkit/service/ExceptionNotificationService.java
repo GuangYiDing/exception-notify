@@ -4,6 +4,7 @@ import com.nolimit35.springkit.config.ExceptionNotifyProperties;
 import com.nolimit35.springkit.filter.ExceptionFilter;
 import com.nolimit35.springkit.formatter.NotificationFormatter;
 import com.nolimit35.springkit.model.ExceptionInfo;
+import com.nolimit35.springkit.notification.NotificationProviderManager;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
@@ -21,8 +22,7 @@ import javax.servlet.http.HttpServletRequest;
 public class ExceptionNotificationService {
     private final ExceptionNotifyProperties properties;
     private final ExceptionAnalyzerService analyzerService;
-    private final DingTalkService dingTalkService;
-    private final WeChatWorkService weChatWorkService;
+    private final NotificationProviderManager notificationManager;
     private final NotificationFormatter formatter;
     private final ExceptionFilter filter;
     private final EnvironmentProvider environmentProvider;
@@ -30,15 +30,13 @@ public class ExceptionNotificationService {
     public ExceptionNotificationService(
             ExceptionNotifyProperties properties,
             ExceptionAnalyzerService analyzerService,
-            DingTalkService dingTalkService,
-            WeChatWorkService weChatWorkService,
+            NotificationProviderManager notificationManager,
             NotificationFormatter formatter,
             ExceptionFilter filter,
             EnvironmentProvider environmentProvider) {
         this.properties = properties;
         this.analyzerService = analyzerService;
-        this.dingTalkService = dingTalkService;
-        this.weChatWorkService = weChatWorkService;
+        this.notificationManager = notificationManager;
         this.formatter = formatter;
         this.filter = filter;
         this.environmentProvider = environmentProvider;
@@ -82,36 +80,13 @@ public class ExceptionNotificationService {
             // Add current environment to exception info
             exceptionInfo.setEnvironment(currentEnvironment);
             
-            // Format notification
-            String content = formatter.format(exceptionInfo);
+            // Send notification via notification manager
+            boolean notificationSent = notificationManager.sendNotification(exceptionInfo);
             
-            // Extract title from the first line of content
-            String title = content.split("\n")[0];
-            
-            // Send notification to DingTalk if configured
-            boolean dingTalkSent = false;
-            if (properties.getDingtalk().getWebhook() != null && !properties.getDingtalk().getWebhook().isEmpty()) {
-                dingTalkSent = dingTalkService.sendNotification(title, content);
-                if (dingTalkSent) {
-                    log.info("Exception notification sent to DingTalk for: {}", exceptionInfo.getType());
-                } else {
-                    log.error("Failed to send exception notification to DingTalk for: {}", exceptionInfo.getType());
-                }
-            }
-            
-            // Send notification to WeChat Work if configured
-            boolean weChatWorkSent = false;
-            if (properties.getWechatwork().getWebhook() != null && !properties.getWechatwork().getWebhook().isEmpty()) {
-                weChatWorkSent = weChatWorkService.sendNotification(title, content);
-                if (weChatWorkSent) {
-                    log.info("Exception notification sent to WeChat Work for: {}", exceptionInfo.getType());
-                } else {
-                    log.error("Failed to send exception notification to WeChat Work for: {}", exceptionInfo.getType());
-                }
-            }
-            
-            if (!dingTalkSent && !weChatWorkSent) {
-                log.warn("No notification channels were configured or successful for exception: {}", exceptionInfo.getType());
+            if (notificationSent) {
+                log.info("Exception notification sent for: {}", exceptionInfo.getType());
+            } else {
+                log.warn("No notification channels were successful for exception: {}", exceptionInfo.getType());
             }
         } catch (Exception e) {
             log.error("Error processing exception notification", e);

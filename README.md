@@ -7,7 +7,7 @@ English | [简体中文](README_CN.md)
 
 ## Introduction
 
-Exception-Notify is a Spring Boot Starter component designed to capture unhandled exceptions in Spring Boot applications and send real-time alerts through DingTalk or WeChat Work. It automatically analyzes exception stack traces, pinpoints the source code file and line number where the exception occurred, and retrieves code committer information through GitHub, GitLab or Gitee APIs. Finally, it sends exception details, TraceID, and responsible person information to a DingTalk or WeChat Work group, enabling real-time exception reporting and full-chain tracking.
+Exception-Notify is a Spring Boot Starter component designed to capture unhandled exceptions in Spring Boot applications and send real-time alerts through DingTalk, Feishu or WeChat Work. It automatically analyzes exception stack traces, pinpoints the source code file and line number where the exception occurred, and retrieves code committer information through GitHub, GitLab or Gitee APIs. Finally, it sends exception details, TraceID, and responsible person information to a DingTalk, Feishu or WeChat Work group, enabling real-time exception reporting and full-chain tracking.
 
 ## Features
 
@@ -15,7 +15,7 @@ Exception-Notify is a Spring Boot Starter component designed to capture unhandle
 - Stack trace analysis to precisely locate exception source (file name and line number)
 - Retrieval of code committer information via GitHub API, GitLab API or Gitee API's Git Blame feature
 - Integration with distributed tracing systems to correlate TraceID
-- Support for real-time exception alerts via DingTalk robot and WeChat Work robot
+- Support for real-time exception alerts via DingTalk robot, Feishu robot and WeChat Work robot
 - Support for Tencent Cloud Log Service (CLS) trace linking
 - Zero-intrusion design, requiring only dependency addition and simple configuration
 - Support for custom alert templates and rules
@@ -44,7 +44,8 @@ exception:
     enabled: true                                # Enable exception notification
     dingtalk:
       webhook: https://oapi.dingtalk.com/robot/send?access_token=xxx  # DingTalk robot webhook URL
-      secret: SEC000000000000000000000000000000000000000000          # DingTalk robot security signature
+    feishu:
+      webhook: https://open.feishu.cn/open-apis/bot/v2/hook/xxx       # Feishu robot webhook URL
     wechatwork:
       webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx  # WeChat Work robot webhook URL
     # GitHub configuration (choose one of GitHub, GitLab, or Gitee)
@@ -243,6 +244,89 @@ public class CustomNotificationFormatter implements NotificationFormatter {
     public String format(ExceptionInfo exceptionInfo) {
         // Custom alert content format
         return "Custom alert content";
+    }
+}
+```
+
+## Customization
+
+### Custom Notification Format
+
+You can customize the format of exception notifications by implementing the `NotificationFormatter` interface:
+
+```java
+@Component
+public class CustomNotificationFormatter implements NotificationFormatter {
+    @Override
+    public String format(ExceptionInfo exceptionInfo) {
+        // Custom notification format
+        return "Custom alert content";
+    }
+}
+```
+
+### Custom Exception Filter
+
+You can customize which exceptions should trigger notifications by implementing the `ExceptionFilter` interface:
+
+```java
+@Component
+public class CustomExceptionFilter implements ExceptionFilter {
+    @Override
+    public boolean shouldNotify(Throwable throwable) {
+        // Custom filtering logic to determine if a notification should be sent
+        return throwable instanceof RuntimeException;
+    }
+}
+```
+
+### Custom Notification Channel
+
+You can add custom notification channels by implementing the `NotificationProvider` interface:
+
+```java
+@Component
+public class CustomNotificationProvider implements NotificationProvider {
+    @Override
+    public boolean sendNotification(ExceptionInfo exceptionInfo) {
+        // Implement custom notification channel logic
+        // exceptionInfo contains all related information about the exception
+        // such as: type, message, stacktrace, environment, code committer, etc.
+        System.out.println("Sending notification for: " + exceptionInfo.getType());
+        return true;
+    }
+    
+    @Override
+    public boolean isEnabled() {
+        // Determine if this notification channel is enabled
+        return true;
+    }
+}
+```
+
+Or the recommended way is to extend the `AbstractNotificationProvider` abstract class:
+
+```java
+@Component
+public class CustomNotificationProvider extends AbstractNotificationProvider {
+    
+    public CustomNotificationProvider(ExceptionNotifyProperties properties) {
+        super(properties);
+    }
+    
+    @Override
+    protected boolean doSendNotification(ExceptionInfo exceptionInfo) throws Exception {
+        // Implement actual notification sending logic
+        // exceptionInfo contains all related information about the exception
+        // such as: type, message, stacktrace, environment, code committer, etc.
+        System.out.println("Sending notification for: " + exceptionInfo.getType());
+        return true;
+    }
+    
+    @Override
+    public boolean isEnabled() {
+        // Determine if this notification channel is enabled
+        return true;
     }
 }
 ```

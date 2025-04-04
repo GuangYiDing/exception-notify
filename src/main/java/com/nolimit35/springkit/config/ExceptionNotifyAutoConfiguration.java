@@ -5,6 +5,10 @@ import com.nolimit35.springkit.filter.ExceptionFilter;
 import com.nolimit35.springkit.formatter.DefaultNotificationFormatter;
 import com.nolimit35.springkit.formatter.NotificationFormatter;
 import com.nolimit35.springkit.handler.GlobalExceptionHandler;
+import com.nolimit35.springkit.notification.NotificationProviderManager;
+import com.nolimit35.springkit.notification.provider.DingTalkNotificationProvider;
+import com.nolimit35.springkit.notification.provider.FeishuNotificationProvider;
+import com.nolimit35.springkit.notification.provider.WeChatWorkNotificationProvider;
 import com.nolimit35.springkit.service.*;
 
 import java.util.List;
@@ -46,18 +50,6 @@ public class ExceptionNotifyAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public DingTalkService dingTalkService(ExceptionNotifyProperties properties) {
-        return new DingTalkService(properties);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public WeChatWorkService weChatWorkService(ExceptionNotifyProperties properties) {
-        return new WeChatWorkService(properties);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
     public EnvironmentProvider environmentProvider(Environment environment) {
         return new EnvironmentProvider(environment);
     }
@@ -70,15 +62,40 @@ public class ExceptionNotifyAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public NotificationProviderManager notificationProviderManager(List<com.nolimit35.springkit.notification.NotificationProvider> providers) {
+        return new NotificationProviderManager(providers);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public DingTalkNotificationProvider dingTalkNotificationProvider(ExceptionNotifyProperties properties, NotificationFormatter formatter) {
+        return new DingTalkNotificationProvider(properties, formatter);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public FeishuNotificationProvider feishuNotificationProvider(ExceptionNotifyProperties properties, NotificationFormatter formatter) {
+        return new FeishuNotificationProvider(properties, formatter);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public WeChatWorkNotificationProvider weChatWorkNotificationProvider(ExceptionNotifyProperties properties, NotificationFormatter formatter) {
+        return new WeChatWorkNotificationProvider(properties, formatter);
+    }
+    
+
+    @Bean
+    @ConditionalOnMissingBean
     public ExceptionNotificationService exceptionNotificationService(
             ExceptionNotifyProperties properties,
             ExceptionAnalyzerService analyzerService,
-            DingTalkService dingTalkService,
-            WeChatWorkService weChatWorkService,
+            NotificationProviderManager notificationManager,
             NotificationFormatter formatter,
             ExceptionFilter filter,
             EnvironmentProvider environmentProvider) {
-        ExceptionNotificationService notificationService = new ExceptionNotificationService(properties, analyzerService, dingTalkService, weChatWorkService, formatter, filter, environmentProvider);
+        ExceptionNotificationService notificationService = new ExceptionNotificationService(
+                properties, analyzerService, notificationManager, formatter, filter, environmentProvider);
         log.info("异常通知组件已注入 :) ");
         return notificationService;
     }

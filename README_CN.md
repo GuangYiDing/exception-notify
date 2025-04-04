@@ -7,7 +7,7 @@
 
 ## 简介
 
-Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot 应用中未处理的异常，并通过钉钉或企业微信实时告警通知。它能够自动分析异常堆栈信息，定位到异常发生的源代码文件和行号，并通过 GitHub、GitLab 或 Gitee API 获取代码提交者信息，最终将异常详情、TraceID 以及责任人信息发送到钉钉群或企业微信群，实现异常的实时上报与全链路追踪。
+Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot 应用中未处理的异常，并通过钉钉、飞书或企业微信实时告警通知。它能够自动分析异常堆栈信息，定位到异常发生的源代码文件和行号，并通过 GitHub、GitLab 或 Gitee API 获取代码提交者信息，最终将异常详情、TraceID 以及责任人信息发送到钉钉群、飞书群或企业微信群，实现异常的实时上报与全链路追踪。
 
 ## 功能特点
 
@@ -15,7 +15,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 - 分析异常堆栈，精确定位异常源码位置（文件名和行号）
 - 通过 GitHub API、GitLab API 或 Gitee API 的 Git Blame 功能获取代码提交者信息
 - 支持与分布式链路追踪系统集成，关联 TraceID
-- 支持通过钉钉机器人和企业微信机器人实时推送异常告警
+- 支持通过钉钉机器人、飞书机器人和企业微信机器人实时推送异常告警
 - 支持腾讯云日志服务(CLS)的链路追踪
 - 零侵入式设计，仅需添加依赖和简单配置即可使用
 - 支持自定义告警模板和告警规则
@@ -44,7 +44,8 @@ exception:
     enabled: true                                # 是否启用异常通知功能
     dingtalk:
       webhook: https://oapi.dingtalk.com/robot/send?access_token=xxx  # 钉钉机器人 Webhook 地址
-      secret: SEC000000000000000000000000000000000000000000          # 钉钉机器人安全设置的签名
+    feishu:
+      webhook: https://open.feishu.cn/open-apis/bot/v2/hook/xxx       # 飞书机器人 Webhook 地址
     wechatwork:
       webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx  # 企业微信机器人 Webhook 地址
     # GitHub 配置 (与 GitLab、Gitee 配置互斥，只能选择其中一种)
@@ -246,6 +247,57 @@ public class CustomNotificationFormatter implements NotificationFormatter {
     }
 }
 ```
+
+### 自定义通知渠道
+
+您可以通过实现 `NotificationProvider` 接口来添加自定义通知渠道：
+
+```java
+@Component
+public class CustomNotificationProvider implements NotificationProvider {
+    @Override
+    public boolean sendNotification(ExceptionInfo exceptionInfo) {
+        // 实现自定义通知渠道的发送逻辑
+        // exceptionInfo 包含了异常的所有相关信息，如：类型、消息、堆栈跟踪、环境、代码提交者等
+        System.out.println("发送通知: " + exceptionInfo.getType());
+        return true;
+    }
+    
+    @Override
+    public boolean isEnabled() {
+        // 决定此通知渠道是否启用
+        return true;
+    }
+}
+```
+
+或者使用更推荐的方式继承 `AbstractNotificationProvider` 抽象类:
+
+```java
+@Component
+public class CustomNotificationProvider extends AbstractNotificationProvider {
+    
+    public CustomNotificationProvider(ExceptionNotifyProperties properties) {
+        super(properties);
+    }
+    
+    @Override
+    protected boolean doSendNotification(ExceptionInfo exceptionInfo) throws Exception {
+        // Implement actual notification sending logic
+        // exceptionInfo contains all related information about the exception
+        // such as: type, message, stacktrace, environment, code committer, etc.
+        System.out.println("Sending notification for: " + exceptionInfo.getType());
+        return true;
+    }
+    
+    @Override
+    public boolean isEnabled() {
+        // Determine if this notification channel is enabled
+        return true;
+    }
+}
+```
+
 
 ## 工作原理
 

@@ -24,6 +24,11 @@ public class ExceptionNotifyProperties {
     private DingTalk dingtalk = new DingTalk();
 
     /**
+     * Feishu configuration
+     */
+    private Feishu feishu = new Feishu();
+
+    /**
      * WeChat Work configuration
      */
     private WeChatWork wechatwork = new WeChatWork();
@@ -77,11 +82,18 @@ public class ExceptionNotifyProperties {
          * DingTalk webhook URL
          */
         private String webhook;
+        
+    }
 
+    /**
+     * Feishu configuration properties
+     */
+    @Data
+    public static class Feishu {
         /**
-         * DingTalk secret for signature
+         * Feishu webhook URL
          */
-        private String secret;
+        private String webhook;
     }
 
     /**

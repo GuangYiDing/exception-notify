@@ -1,19 +1,20 @@
 package com.nolimit35.springkit.service;
 
-import com.nolimit35.springkit.config.ExceptionNotifyProperties;
-import com.nolimit35.springkit.model.CodeAuthorInfo;
-import com.nolimit35.springkit.model.ExceptionInfo;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.nolimit35.springkit.config.ExceptionNotifyProperties;
+import com.nolimit35.springkit.model.CodeAuthorInfo;
+import com.nolimit35.springkit.model.ExceptionInfo;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for analyzing exceptions
@@ -23,8 +24,7 @@ import java.util.stream.Collectors;
 public class ExceptionAnalyzerService {
     private final List<GitSourceControlService> gitSourceControlServices;
     private final ExceptionNotifyProperties properties;
-    private final Pattern stackTracePattern = Pattern.compile("at ([\\w$.]+)\\(([\\w$.]+\\.java):(\\d+)\\)");
-    
+   
     @Value("${spring.application.name:unknown}")
     private String applicationName;
 
