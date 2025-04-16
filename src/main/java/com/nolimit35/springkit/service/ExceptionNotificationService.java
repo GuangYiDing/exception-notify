@@ -55,10 +55,10 @@ public class ExceptionNotificationService {
 
         // Get current environment from Spring profiles
         String currentEnvironment = environmentProvider.getCurrentEnvironment();
-        
+
         // Update the current environment in properties
         properties.getEnvironment().setCurrent(currentEnvironment);
-        
+
         // Check if we should report from the current environment
         if (!properties.getEnvironment().shouldReportFromCurrentEnvironment()) {
             log.debug("Exception notification is disabled for the current environment: {}", currentEnvironment);
@@ -73,16 +73,16 @@ public class ExceptionNotificationService {
         try {
             // Get trace ID from request if available
             String traceId = getTraceId();
-            
+
             // Analyze exception
             ExceptionInfo exceptionInfo = analyzerService.analyzeException(throwable, traceId);
-            
+
             // Add current environment to exception info
             exceptionInfo.setEnvironment(currentEnvironment);
-            
+
             // Send notification via notification manager
             boolean notificationSent = notificationManager.sendNotification(exceptionInfo);
-            
+
             if (notificationSent) {
                 log.info("Exception notification sent for: {}", exceptionInfo.getType());
             } else {
@@ -109,7 +109,7 @@ public class ExceptionNotificationService {
                 HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
                 String headerName = properties.getTrace().getHeaderName();
                 String traceId = request.getHeader(headerName);
-                
+
                 if (traceId != null && !traceId.isEmpty()) {
                     return MDC.get("traceId");
                 }
@@ -117,7 +117,8 @@ public class ExceptionNotificationService {
         } catch (Exception e) {
             log.debug("Error getting trace ID", e);
         }
-        
+
         return MDC.get("traceId");
     }
-} 
+
+}

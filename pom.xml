@@ -6,7 +6,7 @@
 
     <groupId>com.nolimit35.springkit</groupId>
     <artifactId>exception-notify</artifactId>
-    <version>1.1.1-RELEASE</version>
+    <version>1.2.1-RELEASE</version>
     
     <!-- Required metadata for Maven Central -->
     <name>Exception Notify</name>
@@ -59,7 +59,15 @@
             <version>${spring-boot.version}</version>
             <optional>true</optional>
         </dependency>
-        
+
+
+        <!-- Spring AOP -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+            <version>${spring-boot.version}</version>
+        </dependency>
+
         <!-- Spring Boot Configuration Processor -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

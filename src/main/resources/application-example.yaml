@@ -4,7 +4,7 @@ exception:
     package-filter:
       enabled: true                              # 是否启用包名过滤功能
       include-packages:                          # 需要解析的包名列表，启用后只会分析这些包名下的异常堆栈
-        - com.nolimit35.springfast
+        - com.nolimit35
     dingtalk:
       webhook: https://oapi.dingtalk.com/robot/send?access_token=xxx  # 钉钉机器人 Webhook 地址
       secret: SEC000000000000000000000000000000000000000000          # 钉钉机器人安全设置的签名

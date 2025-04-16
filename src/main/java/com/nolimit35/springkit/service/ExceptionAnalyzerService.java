@@ -1,20 +1,18 @@
 package com.nolimit35.springkit.service;
 
+import com.nolimit35.springkit.config.ExceptionNotifyProperties;
+import com.nolimit35.springkit.model.CodeAuthorInfo;
+import com.nolimit35.springkit.model.ExceptionInfo;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
-import com.nolimit35.springkit.config.ExceptionNotifyProperties;
-import com.nolimit35.springkit.model.CodeAuthorInfo;
-import com.nolimit35.springkit.model.ExceptionInfo;
-
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for analyzing exceptions
@@ -49,12 +47,12 @@ public class ExceptionAnalyzerService {
         // Find the first application-specific stack trace element
         StackTraceElement[] stackTraceElements = throwable.getStackTrace();
         StackTraceElement firstAppElement = findFirstApplicationElement(stackTraceElements);
-        
+
         String location = null;
         CodeAuthorInfo authorInfo = null;
-        
+
         if (firstAppElement != null) {
-            location = firstAppElement.getClassName() + "." + firstAppElement.getMethodName() + 
+            location = firstAppElement.getClassName() + "." + firstAppElement.getMethodName() +
                        "(" + firstAppElement.getFileName() + ":" + firstAppElement.getLineNumber() + ")";
             
             // Get author information from available git source control services
@@ -163,7 +161,7 @@ public class ExceptionAnalyzerService {
                     !className.startsWith("com.sun.") &&
                     !className.startsWith("org.springframework.") && 
                     !className.startsWith("org.apache.") &&
-                    !className.startsWith("com.nolimit35.springship")) {
+                    !className.startsWith("com.nolimit35.springkit")) {
                     return element;
                 }
             }

@@ -1,18 +1,15 @@
 package com.nolimit35.springkit.config;
 
+import com.nolimit35.springkit.aspect.ExceptionNotificationAspect;
 import com.nolimit35.springkit.filter.DefaultExceptionFilter;
 import com.nolimit35.springkit.filter.ExceptionFilter;
 import com.nolimit35.springkit.formatter.DefaultNotificationFormatter;
 import com.nolimit35.springkit.formatter.NotificationFormatter;
-import com.nolimit35.springkit.handler.GlobalExceptionHandler;
 import com.nolimit35.springkit.notification.NotificationProviderManager;
 import com.nolimit35.springkit.notification.provider.DingTalkNotificationProvider;
 import com.nolimit35.springkit.notification.provider.FeishuNotificationProvider;
 import com.nolimit35.springkit.notification.provider.WeChatWorkNotificationProvider;
 import com.nolimit35.springkit.service.*;
-
-import java.util.List;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -22,6 +19,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
 
+import java.util.List;
+
 /**
  * Auto-configuration for Exception-Notify
  */
@@ -30,8 +29,7 @@ import org.springframework.core.env.Environment;
 @ConditionalOnProperty(prefix = "exception.notify", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Import({
     DefaultExceptionFilter.class,
-    DefaultNotificationFormatter.class,
-    GlobalExceptionHandler.class
+    DefaultNotificationFormatter.class
 })
 @Slf4j
 public class ExceptionNotifyAutoConfiguration {
@@ -83,7 +81,14 @@ public class ExceptionNotifyAutoConfiguration {
     public WeChatWorkNotificationProvider weChatWorkNotificationProvider(ExceptionNotifyProperties properties, NotificationFormatter formatter) {
         return new WeChatWorkNotificationProvider(properties, formatter);
     }
-    
+
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ExceptionNotificationAspect exceptionNotificationAspect(ExceptionNotificationService notificationService) {
+        return new ExceptionNotificationAspect(notificationService);
+    }
+
 
     @Bean
     @ConditionalOnMissingBean
