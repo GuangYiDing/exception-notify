@@ -30,7 +30,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 <dependency>
     <groupId>com.nolimit35.springkit</groupId>
     <artifactId>exception-notify</artifactId>
-    <version>1.1.1-RELEASE</version>
+    <version>1.2.1-RELEASE</version>
 </dependency>
 ```
 
@@ -301,7 +301,7 @@ public class CustomNotificationProvider extends AbstractNotificationProvider {
 
 ## 工作原理
 
-1. 通过 Spring Boot 的 `@ControllerAdvice` 机制捕获未处理的异常
+1. 通过 Spring AOP 的 `@AfterThrowing` 注解机制捕获未处理的异常
 2. 分析异常堆栈信息，提取出异常发生的源代码文件和行号
 3. 调用 GitHub API、GitLab API 或 Gitee API 的 Git Blame 接口，获取对应代码行的提交者信息
 4. 从当前请求上下文中提取 TraceID（如果启用了链路追踪）

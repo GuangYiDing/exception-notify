@@ -30,7 +30,7 @@ Add the following dependency to your Spring Boot project's `pom.xml` file:
 <dependency>
     <groupId>com.nolimit35.springkit</groupId>
     <artifactId>exception-notify</artifactId>
-    <version>1.1.1-RELEASE</version>
+    <version>1.2.1-RELEASE</version>
 </dependency>
 ```
 
@@ -333,7 +333,7 @@ public class CustomNotificationProvider extends AbstractNotificationProvider {
 
 ## How It Works
 
-1. Captures unhandled exceptions using Spring Boot's `@ControllerAdvice` mechanism
+1. Captures unhandled exceptions using Spring AOP's `@AfterThrowing` annotation mechanism
 2. Analyzes exception stack trace information to extract the source code file and line number where the exception occurred
 3. Calls the GitHub API or Gitee API's Git Blame interface to retrieve committer information for the corresponding code line
 4. Extracts TraceID from the current request context (if trace linking is enabled)
