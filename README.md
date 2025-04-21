@@ -282,7 +282,7 @@ public class CustomExceptionFilter implements ExceptionFilter {
 
 ### Custom Notification Channel
 
-You can add custom notification channels by implementing the `NotificationProvider` interface:
+You can add a custom notification channel by implementing the `NotificationProvider` interface:
 
 ```java
 @Component
@@ -304,7 +304,7 @@ public class CustomNotificationProvider implements NotificationProvider {
 }
 ```
 
-Or the recommended way is to extend the `AbstractNotificationProvider` abstract class:
+Or more preferably by extending the `AbstractNotificationProvider` abstract class:
 
 ```java
 @Component
@@ -331,21 +331,134 @@ public class CustomNotificationProvider extends AbstractNotificationProvider {
 }
 ```
 
+## Monitor Utility
+
+Monitor is a simple utility class that allows you to record logs and send messages through notification channels configured in Exception-Notify (such as DingTalk, Feishu, or WeChat Work).
+
+### Features
+
+- Simple API similar to SLF4J, integrates with existing logging systems
+- Automatically sends messages through configured notification channels
+- Supports multiple logging levels (info, warn, error)
+- Supports messages with or without exceptions
+- Supports custom Logger instances
+- Automatically captures TraceID from MDC or request headers when trace is enabled
+- Generates links to Tencent Cloud Log Service (CLS) for easy log tracking
+- Includes caller location information for better debugging
+
+### Usage
+
+#### Basic Usage
+
+Call static methods directly to record logs and send notifications:
+
+```java
+// Info level notification
+Monitor.info("User registration completed successfully");
+
+// Warning level notification
+Monitor.warn("Payment processing delayed");
+
+// Error level notification
+Monitor.error("Database connection failed");
+
+// Notifications with exceptions
+try {
+    // Business logic
+} catch (Exception e) {
+    Monitor.info("Order received with issues", e);
+    Monitor.warn("Order processing partially failed", e);
+    Monitor.error("Order processing failed", e);
+}
+```
+
+#### Using Custom Logger
+
+You can get an SLF4J Logger instance through the `Monitor.getLogger()` method and use it for logging:
+
+```java
+// Get Logger
+Logger logger = Monitor.getLogger(YourService.class);
+
+// Use custom Logger to send notifications
+Monitor.info(logger, "Payment processing started");
+Monitor.warn(logger, "Payment processing delayed");
+Monitor.error(logger, "Payment processing failed");
+
+// With exceptions
+Monitor.info(logger, "Third-party service responded with warnings", exception);
+Monitor.warn(logger, "Third-party service responded with errors", exception);
+Monitor.error(logger, "Third-party service call failed", exception);
+```
+
+### Configuration
+
+Monitor utility uses the same configuration as Exception-Notify, no additional configuration is needed. As long as Exception-Notify is configured in `application.yml` or `application.properties`, Monitor will automatically use these configurations.
+
+### Common Use Cases
+
+#### Database Operation Failure
+
+```java
+try {
+    repository.save(entity);
+} catch (DataAccessException e) {
+    Monitor.error("Failed to save entity with id: " + entity.getId(), e);
+}
+```
+
+#### Third-Party Service Call Failure
+
+```java
+try {
+    String response = thirdPartyApiClient.call();
+    if (response == null || response.isEmpty()) {
+        Monitor.error("Third-party API returned empty response");
+    }
+} catch (Exception e) {
+    Monitor.error("Third-party API call failed", e);
+}
+```
+
+#### Business Rule Violation
+
+```java
+if (withdrawAmount > dailyLimit) {
+    Monitor.error("Business rule violation: attempted to withdraw " + 
+                  withdrawAmount + " exceeding daily limit of " + dailyLimit);
+    throw new BusinessRuleException("Withdrawal amount exceeds daily limit");
+}
+```
+
+#### Important Business Process State Change
+
+```java
+Monitor.error("Order #12345 status changed from PENDING to FAILED");
+```
+
+### Notes
+
+- Monitor is primarily used for important errors and business events that require immediate notification
+- Avoid overuse to prevent notification channel overload
+- Notifications are only sent in configured environments (typically test and prod environments)
+- TraceID is automatically captured from MDC or request headers when trace is enabled
+- If Tencent CLS is configured, clickable log links will be included in notifications
+
 ## How It Works
 
-1. Captures unhandled exceptions using Spring AOP's `@AfterThrowing` annotation mechanism
+1. Captures unhandled exceptions through Spring AOP's `@AfterThrowing` annotation mechanism
 2. Analyzes exception stack trace information to extract the source code file and line number where the exception occurred
-3. Calls the GitHub API or Gitee API's Git Blame interface to retrieve committer information for the corresponding code line
+3. Calls the GitHub API, GitLab API, or Gitee API's Git Blame interface to get committer information for the corresponding line of code
 4. Extracts TraceID from the current request context (if trace linking is enabled)
 5. Assembles exception information, code committer information, and TraceID into an alert message
-6. Sends the alert message to the specified group via DingTalk robot or WeChat Work robot Webhook interface
+6. Sends the alert message to the specified group through DingTalk or WeChat Work robot Webhook interface
 
-## Important Notes
+## Precautions
 
-- Ensure the application has network permission to access GitHub API or Gitee API
-- GitHub Token or Gitee Token must have read permission for the repository
-- DingTalk robot and WeChat Work robot need to be correctly configured with security settings
-- To get accurate code committer information, ensure the code repository version matches the deployed code version
+- Ensure the application has network permissions to access GitHub API, GitLab API, or Gitee API
+- GitHub Token, GitLab Token, or Gitee Token needs repository read permission
+- DingTalk and WeChat Work robots need to be correctly configured with security settings
+- To get accurate code committer information, ensure the code repository is consistent with the deployed code version
 
 ## Contribution Guidelines
 

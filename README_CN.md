@@ -298,6 +298,118 @@ public class CustomNotificationProvider extends AbstractNotificationProvider {
 }
 ```
 
+## Monitor 工具类
+
+Monitor 是一个简单易用的工具类，可以在记录日志的同时，将消息通过 Exception-Notify 配置的通知渠道（如钉钉、飞书或企业微信）发送出去。
+
+### 特点
+
+- 类似 SLF4J 的简单 API，与现有日志系统集成
+- 自动通过配置的通知渠道发送消息
+- 支持多种日志级别（info、warn、error）
+- 支持带异常和不带异常的消息推送
+- 支持自定义 Logger 实例
+- 自动从 MDC 或请求头中捕获 TraceID（当链路追踪功能启用时）
+- 生成腾讯云日志服务(CLS)的可点击链接，便于日志追踪
+- 包含调用者位置信息，便于更好的调试
+
+### 使用方法
+
+#### 基本用法
+
+直接调用静态方法记录日志并发送通知：
+
+```java
+// 信息级别通知
+Monitor.info("用户注册成功完成");
+
+// 警告级别通知
+Monitor.warn("支付处理延迟");
+
+// 错误级别通知
+Monitor.error("数据库连接失败");
+
+// 带异常的通知
+try {
+    // 业务逻辑
+} catch (Exception e) {
+    Monitor.info("订单接收存在问题", e);
+    Monitor.warn("订单处理部分失败", e);
+    Monitor.error("订单处理失败", e);
+}
+```
+
+#### 使用自定义 Logger
+
+您可以通过 `Monitor.getLogger()` 方法获取一个 SLF4J Logger 实例，然后使用该实例进行日志记录：
+
+```java
+// 获取 Logger
+Logger logger = Monitor.getLogger(YourService.class);
+
+// 使用自定义 Logger 发送通知
+Monitor.info(logger, "支付处理开始");
+Monitor.warn(logger, "支付处理延迟");
+Monitor.error(logger, "支付处理失败");
+
+// 带异常的通知
+Monitor.info(logger, "第三方服务返回警告信息", exception);
+Monitor.warn(logger, "第三方服务返回错误信息", exception);
+Monitor.error(logger, "第三方服务调用失败", exception);
+```
+
+### 配置
+
+Monitor 工具类使用与 Exception-Notify 相同的配置，无需额外配置。只要已经在 `application.yml` 或 `application.properties` 中配置了 Exception-Notify 组件，Monitor 就会自动使用这些配置。
+
+### 常见使用场景
+
+#### 数据库操作失败
+
+```java
+try {
+    repository.save(entity);
+} catch (DataAccessException e) {
+    Monitor.error("保存实体失败，ID: " + entity.getId(), e);
+}
+```
+
+#### 第三方服务调用失败
+
+```java
+try {
+    String response = thirdPartyApiClient.call();
+    if (response == null || response.isEmpty()) {
+        Monitor.error("第三方 API 返回空响应");
+    }
+} catch (Exception e) {
+    Monitor.error("第三方 API 调用失败", e);
+}
+```
+
+#### 业务规则违反
+
+```java
+if (withdrawAmount > dailyLimit) {
+    Monitor.error("业务规则违反: 尝试提取 " + withdrawAmount + 
+                  " 超过每日限额 " + dailyLimit);
+    throw new BusinessRuleException("提款金额超过每日限额");
+}
+```
+
+#### 重要业务流程状态变更
+
+```java
+Monitor.error("订单 #12345 状态从 PENDING 变更为 FAILED");
+```
+
+### 注意事项
+
+- Monitor 主要用于需要即时通知的重要错误和业务事件
+- 避免过度使用，以免通知渠道被大量消息淹没
+- 通知仅在配置的环境中发送（通常是 test 和 prod 环境）
+- 当链路追踪功能启用时，TraceID 会自动从 MDC 或请求头中获取
+- 如果配置了腾讯云日志服务(CLS)，通知中将包含可点击的日志链接
 
 ## 工作原理
 

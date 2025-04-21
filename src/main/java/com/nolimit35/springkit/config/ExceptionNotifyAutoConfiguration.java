@@ -5,12 +5,14 @@ import com.nolimit35.springkit.filter.DefaultExceptionFilter;
 import com.nolimit35.springkit.filter.ExceptionFilter;
 import com.nolimit35.springkit.formatter.DefaultNotificationFormatter;
 import com.nolimit35.springkit.formatter.NotificationFormatter;
+import com.nolimit35.springkit.monitor.Monitor;
 import com.nolimit35.springkit.notification.NotificationProviderManager;
 import com.nolimit35.springkit.notification.provider.DingTalkNotificationProvider;
 import com.nolimit35.springkit.notification.provider.FeishuNotificationProvider;
 import com.nolimit35.springkit.notification.provider.WeChatWorkNotificationProvider;
 import com.nolimit35.springkit.service.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -87,6 +89,13 @@ public class ExceptionNotifyAutoConfiguration {
     @ConditionalOnMissingBean
     public ExceptionNotificationAspect exceptionNotificationAspect(ExceptionNotificationService notificationService) {
         return new ExceptionNotificationAspect(notificationService);
+    }
+
+    @Bean
+    public Monitor monitor(NotificationProviderManager manager,
+                           @Value("${spring.application.name:unknown}") String appName,
+                           ExceptionNotifyProperties properties) {
+        return new Monitor(manager, appName, properties);
     }
 
 
