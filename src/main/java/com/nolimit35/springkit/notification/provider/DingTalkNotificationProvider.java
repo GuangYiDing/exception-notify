@@ -52,15 +52,16 @@ public class DingTalkNotificationProvider extends AbstractNotificationProvider {
         String formattedContent = "#### " + title + "\n" + content;
         
         Map<String, String> text = new HashMap<>();
-        text.put("content", formattedContent);
-        requestBody.put("text", text);
+        text.put("text", formattedContent);
+        text.put("title", "异常告警");
+        requestBody.put("markdown", text);
 
         String jsonBody = objectMapper.writeValueAsString(requestBody);
         
         Request request = new Request.Builder()
             .url(webhook)
             .header("Content-Type", "application/json")
-            .post(RequestBody.create(jsonBody, JSON))
+            .post(RequestBody.create(JSON, jsonBody))
             .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
