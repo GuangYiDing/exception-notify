@@ -6,11 +6,7 @@ import com.nolimit35.springkit.formatter.NotificationFormatter;
 import com.nolimit35.springkit.model.ExceptionInfo;
 import com.nolimit35.springkit.notification.AbstractNotificationProvider;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import okhttp3.*;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -61,7 +57,7 @@ public class DingTalkNotificationProvider extends AbstractNotificationProvider {
         Request request = new Request.Builder()
             .url(webhook)
             .header("Content-Type", "application/json")
-            .post(RequestBody.create(JSON, jsonBody))
+                .post(RequestBody.create(jsonBody, JSON))
             .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
