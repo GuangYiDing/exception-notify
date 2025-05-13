@@ -30,7 +30,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 <dependency>
     <groupId>com.nolimit35.springkit</groupId>
     <artifactId>exception-notify</artifactId>
-    <version>1.2.4-RELEASE</version>
+    <version>1.3.0-RELEASE</version>
 </dependency>
 ```
 
@@ -44,10 +44,23 @@ exception:
     enabled: true                                # 是否启用异常通知功能
     dingtalk:
       webhook: https://oapi.dingtalk.com/robot/send?access_token=xxx  # 钉钉机器人 Webhook 地址
+      at:
+        enabled: true                                                 # 是否启用@功能
+        userIdMappingGitEmail:                                        # 钉钉 用户id 与 git 提交邮箱的映射关系
+          xxx: ['xxx@xx.com','xxxx@xx.com']
     feishu:
       webhook: https://open.feishu.cn/open-apis/bot/v2/hook/xxx       # 飞书机器人 Webhook 地址
+      at:
+        enabled: true                                                 # 是否启用@功能
+        openIdMappingGitEmail:                                        # 飞书 openid 与 git 提交邮箱的映射关系
+          ou_xxxxxxxx: ['xxx@xx.com','xxxx@xx.com']
     wechatwork:
       webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx  # 企业微信机器人 Webhook 地址
+      at:
+        enabled: true                                                    # 是否启用@功能
+        userIdMappingGitEmail:                                           # 企微 用户id 与 git 提交邮箱的映射关系
+          # 企微用户 id 带有 @ 符号时,需要手动特殊处理成 [@]
+          'xxx[@]xx.com': ['xxx@xx.com','xxxx@xx.com']
     # GitHub 配置 (与 GitLab、Gitee 配置互斥，只能选择其中一种)
     github:
       token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                # GitHub 访问令牌
@@ -123,6 +136,7 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
     at com.example.controller.UserController.getData(UserController.java:28)
     at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
     ...
+处理人: @张三    
 ```
 
 ## 高级配置
@@ -214,6 +228,50 @@ exception:
 ```
 
 > **注意**：GitHub、GitLab 和 Gitee 配置是互斥的，系统只能从一个代码托管平台读取提交信息。如果同时配置了多个，将按照 Gitee、GitLab、GitHub 的优先顺序选择。
+
+
+### 通知@功能配置
+
+异常通知支持在钉钉、飞书或企业微信群中@相关责任人，以便更快地引起注意。你可以通过以下配置来启用和自定义@功能：
+
+```yaml
+exception:
+  notify:
+    dingtalk:
+      at:
+        enabled: true                                                 # 是否启用@功能
+        userIdMappingGitEmail:                                        # 钉钉 用户id 与 git 提交邮箱的映射关系
+          xxx: ['xxx@xx.com','xxxx@xx.com']
+    feishu:
+      at:
+        enabled: true                                                 # 是否启用@功能
+        openIdMappingGitEmail:                                        # 飞书 openid 与 git 提交邮箱的映射关系
+          ou_xxxxxxxx: ['xxx@xx.com','xxxx@xx.com']
+    wechatwork:
+      at:
+        enabled: true                                                 # 是否启用@功能
+        userIdMappingGitEmail:                                        # 企微 用户id 与 git 提交邮箱的映射关系
+          # 企微用户 id 带有 @ 符号时,需要手动特殊处理成 [@]
+          'xxx[@]xx.com': ['xxx@xx.com','xxxx@xx.com']
+```
+
+配置说明：
+
+1. **钉钉@功能**：
+    - `enabled`: 是否启用钉钉@功能
+    - `userIdMappingGitEmail`: 钉钉用户ID与Git提交邮箱的映射关系，支持一个用户ID对应多个Git邮箱
+
+2. **飞书@功能**：
+    - `enabled`: 是否启用飞书@功能
+    - `openIdMappingGitEmail`: 飞书用户openID与Git提交邮箱的映射关系，支持一个openID对应多个Git邮箱
+
+3. **企业微信@功能**：
+    - `enabled`: 是否启用企业微信@功能
+    - `userIdMappingGitEmail`: 企业微信用户ID与Git提交邮箱的映射关系，支持一个用户ID对应多个Git邮箱
+    - 注意：企业微信用户ID如果包含`@`符号，需要特殊处理成`[@]`
+
+启用@功能后，当异常发生时，系统会根据Git提交信息找到对应的责任人，并在告警消息中@相关人员，提高异常处理的及时性和准确性。
+
 
 ### 自定义异常过滤
 
@@ -433,4 +491,4 @@ Monitor.error("订单 #12345 状态从 PENDING 变更为 FAILED");
 
 ## 许可证
 
-本项目采用 [Apache License 2.0](LICENSE) 许可证。 
+本项目采用 [Apache License 2.0](LICENSE) 许可证。

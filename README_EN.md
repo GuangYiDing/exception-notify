@@ -30,7 +30,7 @@ Add the following dependency to your Spring Boot project's `pom.xml` file:
 <dependency>
     <groupId>com.nolimit35.springkit</groupId>
     <artifactId>exception-notify</artifactId>
-    <version>1.2.4-RELEASE</version>
+    <version>1.3.0-RELEASE</version>
 </dependency>
 ```
 
@@ -44,10 +44,23 @@ exception:
     enabled: true                                # Enable exception notification
     dingtalk:
       webhook: https://oapi.dingtalk.com/robot/send?access_token=xxx  # DingTalk robot webhook URL
+      at:
+        enabled: true                                                 # Enable @ mention feature
+        userIdMappingGitEmail:                                        # Mapping between DingTalk user ID and Git email
+          xxx: ['xxx@xx.com','xxxx@xx.com']
     feishu:
       webhook: https://open.feishu.cn/open-apis/bot/v2/hook/xxx       # Feishu robot webhook URL
+      at:
+        enabled: true                                                 # Enable @ mention feature
+        openIdMappingGitEmail:                                        # Mapping between Feishu openID and Git email
+          ou_xxxxxxxx: ['xxx@xx.com','xxxx@xx.com']
     wechatwork:
       webhook: https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx  # WeChat Work robot webhook URL
+      at:
+        enabled: true                                                    # Enable @ mention feature
+        userIdMappingGitEmail:                                           # Mapping between WeChat Work user ID and Git email
+          # For WeChat Work user IDs containing @ symbol, replace with [@]
+          'xxx[@]xx.com': ['xxx@xx.com','xxxx@xx.com']
     # GitHub configuration (choose one of GitHub, GitLab, or Gitee)
     github:
       token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                # GitHub access token
@@ -123,6 +136,7 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
     at com.example.controller.UserController.getData(UserController.java:28)
     at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
     ...
+mention: @John Doe
 ```
 
 ## Advanced Configuration
@@ -214,6 +228,49 @@ exception:
 ```
 
 > **Note**: GitHub, GitLab, and Gitee configurations are mutually exclusive; the system can only read commit information from one code hosting platform. If multiple are configured, preference order is Gitee, then GitLab, then GitHub.
+
+
+### Notification @ Mention Configuration
+
+Exception notifications support @mentioning responsible persons in DingTalk, Feishu, or WeChat Work groups to draw attention more quickly. You can enable and customize the @ mention feature with the following configuration:
+
+```yaml
+exception:
+  notify:
+    dingtalk:
+      at:
+        enabled: true                                                 # Enable @ mention feature
+        userIdMappingGitEmail:                                        # Mapping between DingTalk user ID and Git email
+          xxx: ['xxx@xx.com','xxxx@xx.com']
+    feishu:
+      at:
+        enabled: true                                                 # Enable @ mention feature
+        openIdMappingGitEmail:                                        # Mapping between Feishu openID and Git email
+          ou_xxxxxxxx: ['xxx@xx.com','xxxx@xx.com']
+    wechatwork:
+      at:
+        enabled: true                                                 # Enable @ mention feature
+        userIdMappingGitEmail:                                        # Mapping between WeChat Work user ID and Git email
+          # For WeChat Work user IDs containing @ symbol, replace with [@]
+          'xxx[@]xx.com': ['xxx@xx.com','xxxx@xx.com']
+```
+
+Configuration details:
+
+1. **DingTalk @ Mention**:
+   - `enabled`: Whether to enable DingTalk @ mentions
+   - `userIdMappingGitEmail`: Mapping between DingTalk user IDs and Git commit emails, supporting multiple Git emails for one user ID
+
+2. **Feishu @ Mention**:
+   - `enabled`: Whether to enable Feishu @ mentions
+   - `openIdMappingGitEmail`: Mapping between Feishu openIDs and Git commit emails, supporting multiple Git emails for one openID
+
+3. **WeChat Work @ Mention**:
+   - `enabled`: Whether to enable WeChat Work @ mentions
+   - `userIdMappingGitEmail`: Mapping between WeChat Work user IDs and Git commit emails, supporting multiple Git emails for one user ID
+   - Note: For WeChat Work user IDs containing `@` symbol, replace with `[@]`
+
+When the @ mention feature is enabled, the system will identify the responsible person based on Git commit information and mention them in the alert message, improving the timeliness and accuracy of exception handling.
 
 ### Custom Exception Filtering
 

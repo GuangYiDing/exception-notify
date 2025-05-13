@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @ConditionalOnMissingBean(NotificationFormatter.class)
 public class DefaultNotificationFormatter implements NotificationFormatter {
     private final ExceptionNotifyProperties properties;
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    public static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public DefaultNotificationFormatter(ExceptionNotifyProperties properties) {
         this.properties = properties;

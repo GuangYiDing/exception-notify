@@ -8,8 +8,11 @@ import com.nolimit35.springkit.notification.AbstractNotificationProvider;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -46,11 +49,36 @@ public class DingTalkNotificationProvider extends AbstractNotificationProvider {
         
         // Format content as markdown
         String formattedContent = "#### " + title + "\n" + content;
-        
-        Map<String, String> text = new HashMap<>();
+
+        Map<String, Object> text = new HashMap<>();
         text.put("text", formattedContent);
         text.put("title", "异常告警");
+
+
+        // 添加处理人信息
+        if (exceptionInfo.getAuthorInfo() != null && StringUtils.hasText(exceptionInfo.getAuthorInfo().getEmail()) &&
+            properties.getDingtalk().getAt() != null && properties.getDingtalk().getAt().isEnabled()) {
+
+            if (properties.getDingtalk().getAt().getUserIdMappingGitEmail() != null
+                && !properties.getDingtalk().getAt().getUserIdMappingGitEmail().isEmpty()) {
+                // at 具体用户
+                String dingUserId = properties.getDingtalk().getAt().getUserIdMappingGitEmail().entrySet().stream()
+                        // 根据邮箱匹配对应的企微用户id
+                        .filter(entry -> entry.getValue().contains(exceptionInfo.getAuthorInfo().getEmail()))
+                        .map(Map.Entry::getKey)
+                        .findFirst()
+                        .orElse(null);
+
+                if (StringUtils.hasText(dingUserId)) {
+                    Map<String, List<String>> atUserId = new HashMap<>();
+                    atUserId.put("atUserIds", Collections.singletonList(dingUserId));
+                    requestBody.put("at", atUserId);
+                }
+            }
+        }
+
         requestBody.put("markdown", text);
+
 
         String jsonBody = objectMapper.writeValueAsString(requestBody);
         

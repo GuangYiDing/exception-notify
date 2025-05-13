@@ -24,6 +24,7 @@ exception:
         userIdMappingGitEmail:                                           # 企微 用户id 与 git 提交邮箱的映射关系
           # 企微用户 id 带有 @ 符号时,需要手动特殊处理成 [@]
           'xxx[@]xx.com': ['xxx@xx.com','xxxx@xx.com']
+
     # GitHub 配置 (与 Gitee 配置互斥，只能选择其中一种)
     github:
       token: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                # GitHub 访问令牌
@@ -56,4 +57,9 @@ spring:
     name: YourApplicationName
   # 当前环境配置，会自动用于确定异常通知的当前环境
   profiles:
-    active: dev                                                      # 当前激活的环境配置
+    active: test                                                      # 当前激活的环境配置
+
+logging:
+  level:
+    root: INFO
+    com.nolimit35: DEBUG

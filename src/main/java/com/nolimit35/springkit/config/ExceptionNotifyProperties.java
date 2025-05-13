@@ -5,6 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -83,6 +85,27 @@ public class ExceptionNotifyProperties {
          */
         private String webhook;
         
+        /**
+         * DingTalk @ configuration
+         */
+        private At at = new At();
+        
+        /**
+         * DingTalk @ configuration properties
+         */
+        @Data
+        public static class At {
+            /**
+             * Whether to enable @ functionality
+             */
+            private boolean enabled = true;
+
+            
+            /**
+             * Mapping of DingTalk user IDs to Git email addresses
+             */
+            private Map<String, List<String>> userIdMappingGitEmail;
+        }
     }
 
     /**
@@ -94,6 +117,27 @@ public class ExceptionNotifyProperties {
          * Feishu webhook URL
          */
         private String webhook;
+        
+        /**
+         * Feishu @ configuration
+         */
+        private At at = new At();
+        
+        /**
+         * Feishu @ configuration properties
+         */
+        @Data
+        public static class At {
+            /**
+             * Whether to enable @ functionality
+             */
+            private boolean enabled = true;
+
+            /**
+             * Mapping of Feishu open IDs to Git email addresses
+             */
+            private Map<String, List<String>> openIdMappingGitEmail;
+        }
     }
 
     /**
@@ -105,6 +149,27 @@ public class ExceptionNotifyProperties {
          * WeChat Work webhook URL
          */
         private String webhook;
+        
+        /**
+         * WeChat Work @ configuration
+         */
+        private At at = new At();
+        
+        /**
+         * WeChat Work @ configuration properties
+         */
+        @Data
+        public static class At {
+            /**
+             * Whether to enable @ functionality
+             */
+            private boolean enabled = true;
+            
+            /**
+             * Mapping of WeChat Work user IDs to Git email addresses
+             */
+            private Map<String, List<String>> userIdMappingGitEmail;
+        }
     }
 
     /**
