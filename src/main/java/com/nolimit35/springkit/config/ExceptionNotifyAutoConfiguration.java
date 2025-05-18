@@ -11,6 +11,8 @@ import com.nolimit35.springkit.notification.provider.DingTalkNotificationProvide
 import com.nolimit35.springkit.notification.provider.FeishuNotificationProvider;
 import com.nolimit35.springkit.notification.provider.WeChatWorkNotificationProvider;
 import com.nolimit35.springkit.service.*;
+import com.nolimit35.springkit.trace.DefaultTraceInfoProvider;
+import com.nolimit35.springkit.trace.TraceInfoProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -31,7 +33,8 @@ import java.util.List;
 @ConditionalOnProperty(prefix = "exception.notify", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Import({
     DefaultExceptionFilter.class,
-    DefaultNotificationFormatter.class
+    DefaultNotificationFormatter.class,
+    DefaultTraceInfoProvider.class
 })
 @Slf4j
 public class ExceptionNotifyAutoConfiguration {
@@ -62,8 +65,11 @@ public class ExceptionNotifyAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public ExceptionAnalyzerService exceptionAnalyzerService(List<GitSourceControlService> gitSourceControlServices, ExceptionNotifyProperties properties) {
-        return new ExceptionAnalyzerService(gitSourceControlServices, properties);
+    public ExceptionAnalyzerService exceptionAnalyzerService(
+            List<GitSourceControlService> gitSourceControlServices,
+            ExceptionNotifyProperties properties,
+            TraceInfoProvider traceInfoProvider) {
+        return new ExceptionAnalyzerService(gitSourceControlServices, properties, traceInfoProvider);
     }
 
     @Bean
@@ -100,8 +106,9 @@ public class ExceptionNotifyAutoConfiguration {
     @Bean
     public Monitor monitor(NotificationProviderManager manager,
                            @Value("${spring.application.name:unknown}") String appName,
-                           ExceptionNotifyProperties properties) {
-        return new Monitor(manager, appName, properties);
+                           ExceptionNotifyProperties properties,
+                           TraceInfoProvider traceInfoProvider) {
+        return new Monitor(manager, appName, properties, traceInfoProvider);
     }
 
 
@@ -113,10 +120,11 @@ public class ExceptionNotifyAutoConfiguration {
             NotificationProviderManager notificationManager,
             NotificationFormatter formatter,
             ExceptionFilter filter,
-            EnvironmentProvider environmentProvider) {
+            EnvironmentProvider environmentProvider,
+            TraceInfoProvider traceInfoProvider) {
         ExceptionNotificationService notificationService = new ExceptionNotificationService(
-                properties, analyzerService, notificationManager, formatter, filter, environmentProvider);
+                properties, analyzerService, notificationManager, formatter, filter, environmentProvider, traceInfoProvider);
         log.info("异常通知组件已注入 :) ");
         return notificationService;
     }
-} 
+}

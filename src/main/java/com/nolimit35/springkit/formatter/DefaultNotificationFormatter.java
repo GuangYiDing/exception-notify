@@ -78,8 +78,8 @@ public class DefaultNotificationFormatter implements NotificationFormatter {
             sb.append("**TraceID：** ").append(exceptionInfo.getTraceId()).append("\n\n");
             
             // Include CLS trace URL as a clickable link if available
-            if (exceptionInfo.getClsTraceUrl() != null && !exceptionInfo.getClsTraceUrl().isEmpty()) {
-                sb.append("**云日志链路：** [点击查看日志](").append(exceptionInfo.getClsTraceUrl()).append(")\n\n");
+            if (exceptionInfo.getTraceUrl() != null && !exceptionInfo.getTraceUrl().isEmpty()) {
+                sb.append("**云日志链路：** [点击查看日志](").append(exceptionInfo.getTraceUrl()).append(")\n\n");
             }
         }
         

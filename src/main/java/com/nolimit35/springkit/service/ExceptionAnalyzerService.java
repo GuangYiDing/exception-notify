@@ -3,14 +3,13 @@ package com.nolimit35.springkit.service;
 import com.nolimit35.springkit.config.ExceptionNotifyProperties;
 import com.nolimit35.springkit.model.CodeAuthorInfo;
 import com.nolimit35.springkit.model.ExceptionInfo;
+import com.nolimit35.springkit.trace.TraceInfoProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,13 +21,17 @@ import java.util.stream.Collectors;
 public class ExceptionAnalyzerService {
     private final List<GitSourceControlService> gitSourceControlServices;
     private final ExceptionNotifyProperties properties;
-   
+    private final TraceInfoProvider traceInfoProvider;
+
     @Value("${spring.application.name:unknown}")
     private String applicationName;
 
-    public ExceptionAnalyzerService(List<GitSourceControlService> gitSourceControlServices, ExceptionNotifyProperties properties) {
+    public ExceptionAnalyzerService(List<GitSourceControlService> gitSourceControlServices,
+                                  ExceptionNotifyProperties properties,
+                                  TraceInfoProvider traceInfoProvider) {
         this.gitSourceControlServices = gitSourceControlServices;
         this.properties = properties;
+        this.traceInfoProvider = traceInfoProvider;
     }
 
     /**
@@ -43,7 +46,7 @@ public class ExceptionAnalyzerService {
         String exceptionType = throwable.getClass().getName();
         String message = throwable.getMessage();
         String stacktrace = getStackTraceAsString(throwable);
-        
+
         // Find the first application-specific stack trace element
         StackTraceElement[] stackTraceElements = throwable.getStackTrace();
         StackTraceElement firstAppElement = findFirstApplicationElement(stackTraceElements);
@@ -54,7 +57,7 @@ public class ExceptionAnalyzerService {
         if (firstAppElement != null) {
             location = firstAppElement.getClassName() + "." + firstAppElement.getMethodName() +
                        "(" + firstAppElement.getFileName() + ":" + firstAppElement.getLineNumber() + ")";
-            
+
             // Get author information from available git source control services
             try {
                 String fileName = convertClassNameToFilePath(firstAppElement.getClassName()) + ".java";
@@ -63,13 +66,13 @@ public class ExceptionAnalyzerService {
                 log.error("Error getting author information", e);
             }
         }
-        
-        // Generate Tencent CLS trace URL if trace is enabled and CLS config is available
-        String clsTraceUrl = null;
+
+        // Generate trace URL if trace is enabled and traceId is available
+        String traceUrl = null;
         if (properties.getTrace().isEnabled() && traceId != null && !traceId.isEmpty()) {
-            clsTraceUrl = generateClsTraceUrl(traceId);
+            traceUrl = traceInfoProvider.generateTraceUrl(traceId);
         }
-        
+
         // Build exception info
         return ExceptionInfo.builder()
                 .time(LocalDateTime.now())
@@ -81,13 +84,13 @@ public class ExceptionAnalyzerService {
                 .appName(applicationName)
                 .environment(properties.getEnvironment().getCurrent())
                 .authorInfo(authorInfo)
-                .clsTraceUrl(clsTraceUrl)
+                .traceUrl(traceUrl)
                 .build();
     }
-    
+
     /**
      * Find author information by trying all available git source control services
-     * 
+     *
      * @param fileName the file name
      * @param lineNumber the line number
      * @return author information or null if not found
@@ -101,31 +104,9 @@ public class ExceptionAnalyzerService {
         }
         return null;
     }
-    
-    /**
-     * Generate Tencent CLS trace URL
-     *
-     * @param traceId the trace ID
-     * @return the CLS trace URL or null if not configured
-     */
-    private String generateClsTraceUrl(String traceId) {
-        String region = properties.getTencentcls().getRegion();
-        String topicId = properties.getTencentcls().getTopicId();
-        
-        if (region != null && !region.isEmpty() && topicId != null && !topicId.isEmpty()) {
 
-            String interactiveQuery =
-                    String.format("{\"filters\":[{\"key\":\"traceId\",\"grammarName\":\"INCLUDE\",\"values\":[{\"values\":[{\"value\":\"%s\",\"isPartialEscape\":true}],\"isOpen\":false}],\"alias_name\":\"traceId\",\"cnName\":\"\"}],\"sql\":{\"quotas\":[],\"dimensions\":[],\"sequences\":[],\"limit\":1000,\"samplingRate\":1},\"sqlStr\":\"\"}",traceId);
 
-            String interactiveQueryBase64 = Base64.getEncoder().encodeToString(interactiveQuery.getBytes(StandardCharsets.UTF_8));
 
-            return String.format("https://console.cloud.tencent.com/cls/search?region=%s&topic_id=%s&interactiveQueryBase64=%s",
-                                region, topicId, interactiveQueryBase64) + "&time=now%2Fd,now%2Fd";
-        }
-        
-        return null;
-    }
-    
     /**
      * Find the first application-specific stack trace element
      *
@@ -138,7 +119,7 @@ public class ExceptionAnalyzerService {
             // Filter based on configured packages
             for (StackTraceElement element : stackTraceElements) {
                 String className = element.getClassName();
-                
+
                 // Check if the class belongs to any of the configured packages
                 for (String packageName : properties.getPackageFilter().getIncludePackages()) {
                     if (className.startsWith(packageName)) {
@@ -146,31 +127,31 @@ public class ExceptionAnalyzerService {
                     }
                 }
             }
-            
+
             // If no stack trace element matches the configured packages, return the first element
             return stackTraceElements.length > 0 ? stackTraceElements[0] : null;
         } else {
             // Original behavior if package filtering is not enabled
             for (StackTraceElement element : stackTraceElements) {
                 String className = element.getClassName();
-                
+
                 // Skip common framework packages
-                if (!className.startsWith("java.") && 
-                    !className.startsWith("javax.") && 
-                    !className.startsWith("sun.") && 
+                if (!className.startsWith("java.") &&
+                    !className.startsWith("javax.") &&
+                    !className.startsWith("sun.") &&
                     !className.startsWith("com.sun.") &&
-                    !className.startsWith("org.springframework.") && 
+                    !className.startsWith("org.springframework.") &&
                     !className.startsWith("org.apache.") &&
                     !className.startsWith("com.nolimit35.springkit")) {
                     return element;
                 }
             }
-            
+
             // If no application-specific element found, return the first element
             return stackTraceElements.length > 0 ? stackTraceElements[0] : null;
         }
     }
-    
+
     /**
      * Convert class name to file path
      *
@@ -180,7 +161,7 @@ public class ExceptionAnalyzerService {
     private String convertClassNameToFilePath(String className) {
         return className.replace('.', '/');
     }
-    
+
     /**
      * Get stack trace as string
      *
@@ -192,4 +173,4 @@ public class ExceptionAnalyzerService {
                 .map(StackTraceElement::toString)
                 .collect(Collectors.joining("\n"));
     }
-} 
+}

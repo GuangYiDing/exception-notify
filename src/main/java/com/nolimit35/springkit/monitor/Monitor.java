@@ -2,25 +2,18 @@ package com.nolimit35.springkit.monitor;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.stream.Collectors;
-import java.nio.charset.StandardCharsets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-
-import javax.servlet.http.HttpServletRequest;
 
 import com.nolimit35.springkit.config.ExceptionNotifyProperties;
 import com.nolimit35.springkit.model.ExceptionInfo;
 import com.nolimit35.springkit.notification.NotificationProviderManager;
+import com.nolimit35.springkit.trace.TraceInfoProvider;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,19 +28,22 @@ public class Monitor {
 
     private static NotificationProviderManager notificationManager;
     private static ExceptionNotifyProperties properties;
-    
+    private static TraceInfoProvider traceInfoProvider;
+
     @Value("${spring.application.name:unknown}")
     private String applicationName;
-    
+
     private static String appName = "unknown";
 
     @Autowired
-    public Monitor(NotificationProviderManager notificationManager, 
+    public Monitor(NotificationProviderManager notificationManager,
                   @Value("${spring.application.name:unknown}") String applicationName,
-                  ExceptionNotifyProperties properties) {
+                  ExceptionNotifyProperties properties,
+                  TraceInfoProvider traceInfoProvider) {
         Monitor.notificationManager = notificationManager;
         Monitor.appName = applicationName;
         Monitor.properties = properties;
+        Monitor.traceInfoProvider = traceInfoProvider;
     }
 
     /**
@@ -235,7 +231,7 @@ public class Monitor {
     private static void sendNotification(String message, Throwable throwable) {
         sendNotification(message, throwable, null);
     }
-    
+
     private static void sendNotification(String message, Throwable throwable, StackTraceElement caller) {
         if (notificationManager == null) {
             log.warn("Monitor尚未完全初始化，通知将不会被发送");
@@ -244,50 +240,45 @@ public class Monitor {
 
         try {
             ExceptionInfo exceptionInfo = buildExceptionInfo(message, throwable, caller);
-            
+
             // 通过通知管理器发送通知
             notificationManager.sendNotification(exceptionInfo);
         } catch (Exception e) {
             log.error("发送通知失败", e);
         }
     }
-    
+
     private static ExceptionInfo buildExceptionInfo(String message, Throwable throwable) {
         return buildExceptionInfo(message, throwable, null);
     }
-    
+
     private static ExceptionInfo buildExceptionInfo(String message, Throwable throwable, StackTraceElement caller) {
         ExceptionInfo.ExceptionInfoBuilder builder = ExceptionInfo.builder()
                 .time(LocalDateTime.now())
                 .appName(appName)
                 .message(message);
-                
+
         // 如果配置中启用了trace，获取traceId
         String traceId = null;
-        if (properties != null && properties.getTrace().isEnabled()) {
-            // 首先从MDC中获取traceId
-            traceId = MDC.get("traceId");
-            
-            // 如果MDC中没有traceId，尝试从请求头中获取
-            if ((traceId == null || traceId.isEmpty()) && properties.getTrace().getHeaderName() != null) {
-                traceId = getTraceIdFromHeader(properties.getTrace().getHeaderName());
-            }
-            
+        if (properties != null && properties.getTrace().isEnabled() && traceInfoProvider != null) {
+            // 使用TraceInfoProvider获取traceId
+            traceId = traceInfoProvider.getTraceId();
+
             if (traceId != null && !traceId.isEmpty()) {
                 builder.traceId(traceId);
-                
-                // 生成腾讯云日志CLS的链接
-                String clsTraceUrl = generateClsTraceUrl(traceId);
-                if (clsTraceUrl != null) {
-                    builder.clsTraceUrl(clsTraceUrl);
+
+                // 使用TraceInfoProvider生成trace URL
+                String traceUrl = traceInfoProvider.generateTraceUrl(traceId);
+                if (traceUrl != null) {
+                    builder.traceUrl(traceUrl);
                 }
             }
         }
-                
+
         if (throwable != null) {
             builder.type(throwable.getClass().getName())
                    .stacktrace(getStackTraceAsString(throwable));
-                   
+
             // 如果有异常堆栈信息，查找可用的第一个应用程序元素
             StackTraceElement[] stackTraceElements = throwable.getStackTrace();
             if (stackTraceElements != null && stackTraceElements.length > 0) {
@@ -298,84 +289,27 @@ public class Monitor {
             }
         } else {
             builder.type("MonitoredMessage");
-            
+
             // 如果没有异常但有调用者信息，使用调用者信息
             if (caller != null) {
                 builder.location(caller.getClassName() + "." + caller.getMethodName() +
                         "(" + caller.getFileName() + ":" + caller.getLineNumber() + ")");
             }
         }
-        
+
         return builder.build();
     }
-    
-    /**
-     * 从请求头中获取traceId
-     *
-     * @param headerName 头部名称
-     * @return traceId或null
-     */
-    private static String getTraceIdFromHeader(String headerName) {
-        try {
-            RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
-            if (requestAttributes instanceof ServletRequestAttributes) {
-                HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
-                String traceId = request.getHeader(headerName);
-                
-                if (traceId != null && !traceId.isEmpty()) {
-                    return traceId;
-                }
-            }
-        } catch (Exception e) {
-            log.debug("从请求头获取traceId失败", e);
-        }
-        return null;
-    }
-    
-    /**
-     * 生成腾讯云日志CLS链接
-     *
-     * @param traceId 追踪ID
-     * @return CLS链接或null如果未配置
-     */
-    private static String generateClsTraceUrl(String traceId) {
-        if (properties == null || properties.getTencentcls() == null) {
-            return null;
-        }
-        
-        String region = properties.getTencentcls().getRegion();
-        String topicId = properties.getTencentcls().getTopicId();
-        
-        if (region != null && !region.isEmpty() && topicId != null && !topicId.isEmpty()) {
-            // 构建查询JSON
-            String interactiveQuery = String.format(
-                "{\"filters\":[{\"key\":\"traceId\",\"grammarName\":\"INCLUDE\",\"values\":[{\"values\":[{\"value\":\"%s\",\"isPartialEscape\":true}],\"isOpen\":false}],\"alias_name\":\"traceId\",\"cnName\":\"\"}],\"sql\":{\"quotas\":[],\"dimensions\":[],\"sequences\":[],\"limit\":1000,\"samplingRate\":1},\"sqlStr\":\"\"}",
-                traceId
-            );
-            
-            // Base64编码查询参数
-            String interactiveQueryBase64 = Base64.getEncoder().encodeToString(
-                interactiveQuery.getBytes(StandardCharsets.UTF_8)
-            );
-            
-            // 构建完整链接
-            return String.format(
-                "https://console.cloud.tencent.com/cls/search?region=%s&topic_id=%s&interactiveQueryBase64=%s",
-                region, topicId, interactiveQueryBase64
-            ) + "&time=now%2Fd,now%2Fd";
-        }
-        
-        return null;
-    }
-    
+
+
+
     private static String getStackTraceAsString(Throwable throwable) {
         if (throwable == null) {
             return "";
         }
-        
+
         return Arrays.stream(throwable.getStackTrace())
                 .limit(10) // 限制堆栈深度
                 .map(StackTraceElement::toString)
                 .collect(Collectors.joining("\n"));
     }
-} 
+}

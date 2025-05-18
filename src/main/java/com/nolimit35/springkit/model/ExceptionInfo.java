@@ -57,7 +57,7 @@ public class ExceptionInfo {
     private CodeAuthorInfo authorInfo;
     
     /**
-     * Tencent CLS trace URL
+     * Trace URL
      */
-    private String clsTraceUrl;
+    private String traceUrl;
 } 

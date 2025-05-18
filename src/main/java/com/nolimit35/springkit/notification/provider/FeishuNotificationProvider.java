@@ -90,8 +90,8 @@ public class FeishuNotificationProvider extends AbstractNotificationProvider {
             sb.append("TraceID：").append(exceptionInfo.getTraceId()).append("\n");
 
             // Include CLS trace URL as a clickable link if available
-            if (exceptionInfo.getClsTraceUrl() != null && !exceptionInfo.getClsTraceUrl().isEmpty()) {
-                sb.append("云日志链路：").append(exceptionInfo.getClsTraceUrl()).append("\n");
+            if (exceptionInfo.getTraceUrl() != null && !exceptionInfo.getTraceUrl().isEmpty()) {
+                sb.append("云日志链路：").append(exceptionInfo.getTraceUrl()).append("\n");
             }
         }
 

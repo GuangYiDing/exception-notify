@@ -5,14 +5,9 @@ import com.nolimit35.springkit.filter.ExceptionFilter;
 import com.nolimit35.springkit.formatter.NotificationFormatter;
 import com.nolimit35.springkit.model.ExceptionInfo;
 import com.nolimit35.springkit.notification.NotificationProviderManager;
+import com.nolimit35.springkit.trace.TraceInfoProvider;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
-
-import javax.servlet.http.HttpServletRequest;
 
 /**
  * Service for handling exception notifications
@@ -26,6 +21,7 @@ public class ExceptionNotificationService {
     private final NotificationFormatter formatter;
     private final ExceptionFilter filter;
     private final EnvironmentProvider environmentProvider;
+    private final TraceInfoProvider traceInfoProvider;
 
     public ExceptionNotificationService(
             ExceptionNotifyProperties properties,
@@ -33,13 +29,15 @@ public class ExceptionNotificationService {
             NotificationProviderManager notificationManager,
             NotificationFormatter formatter,
             ExceptionFilter filter,
-            EnvironmentProvider environmentProvider) {
+            EnvironmentProvider environmentProvider,
+            TraceInfoProvider traceInfoProvider) {
         this.properties = properties;
         this.analyzerService = analyzerService;
         this.notificationManager = notificationManager;
         this.formatter = formatter;
         this.filter = filter;
         this.environmentProvider = environmentProvider;
+        this.traceInfoProvider = traceInfoProvider;
     }
 
     /**
@@ -71,8 +69,8 @@ public class ExceptionNotificationService {
         }
 
         try {
-            // Get trace ID from request if available
-            String traceId = getTraceId();
+            // Get trace ID from provider
+            String traceId = traceInfoProvider.getTraceId();
 
             // Analyze exception
             ExceptionInfo exceptionInfo = analyzerService.analyzeException(throwable, traceId);
@@ -93,32 +91,6 @@ public class ExceptionNotificationService {
         }
     }
 
-    /**
-     * Get trace ID from current request
-     *
-     * @return trace ID or null if not available
-     */
-    private String getTraceId() {
-        if (!properties.getTrace().isEnabled()) {
-            return null;
-        }
 
-        try {
-            RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
-            if (requestAttributes instanceof ServletRequestAttributes) {
-                HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
-                String headerName = properties.getTrace().getHeaderName();
-                String traceId = request.getHeader(headerName);
-
-                if (traceId != null && !traceId.isEmpty()) {
-                    return MDC.get("traceId");
-                }
-            }
-        } catch (Exception e) {
-            log.debug("Error getting trace ID", e);
-        }
-
-        return MDC.get("traceId");
-    }
 
 }

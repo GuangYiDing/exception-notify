@@ -11,7 +11,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 
 ## 功能特点
 
-- 自动捕获 Spring Boot 应用中未处理的异常
+- 基于 @AfterThrowing 自动捕获 Spring Boot 应用中未处理的异常
 - 分析异常堆栈，精确定位异常源码位置（文件名和行号）
 - 通过 GitHub API、GitLab API 或 Gitee API 的 Git Blame 功能获取代码提交者信息
 - 支持与分布式链路追踪系统集成，关联 TraceID
@@ -30,7 +30,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 <dependency>
     <groupId>com.nolimit35.springkit</groupId>
     <artifactId>exception-notify</artifactId>
-    <version>1.3.0-RELEASE</version>
+    <version>1.3.1-RELEASE</version>
 </dependency>
 ```
 
@@ -111,7 +111,7 @@ spring:
 
 ### 3. 启动应用
 
-启动你的 Spring Boot 应用，Exception-Notify 将自动注册全局异常处理器，捕获未处理的异常并发送告警。
+启动你的 Spring Boot 应用，Exception-Notify 将自动注册全局异常处理器，捕获所有被 @Controller 或 @RestController 或 @ExceptionNotify 标记的类中未处理的异常并发送告警。
 
 ## 告警示例
 
@@ -136,7 +136,7 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
     at com.example.controller.UserController.getData(UserController.java:28)
     at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
     ...
-处理人: @张三    
+处理人: @张三
 ```
 
 ## 高级配置
@@ -306,6 +306,29 @@ public class CustomNotificationFormatter implements NotificationFormatter {
 }
 ```
 
+### 自定义链路追踪
+
+你可以通过实现 `TraceInfoProvider` 接口并注册为 Spring Bean 来自定义如何获取 TraceID 和生成链路追踪 URL：
+
+```java
+@Component
+public class CustomTraceInfoProvider implements TraceInfoProvider {
+    @Override
+    public String getTraceId() {
+        // 自定义获取 TraceID 的逻辑
+        return "custom-trace-id";
+    }
+
+    @Override
+    public String generateTraceUrl(String traceId) {
+        // 自定义生成链路追踪 URL 的逻辑
+        return "https://your-log-system.com/trace?id=" + traceId;
+    }
+}
+```
+
+默认实现 `DefaultTraceInfoProvider` 会从 MDC 或请求头中获取 TraceID，并生成腾讯云日志服务(CLS)的链路追踪 URL。
+
 ### 自定义通知渠道
 
 您可以通过实现 `NotificationProvider` 接口来添加自定义通知渠道：
@@ -320,7 +343,7 @@ public class CustomNotificationProvider implements NotificationProvider {
         System.out.println("发送通知: " + exceptionInfo.getType());
         return true;
     }
-    
+
     @Override
     public boolean isEnabled() {
         // 决定此通知渠道是否启用
@@ -334,11 +357,11 @@ public class CustomNotificationProvider implements NotificationProvider {
 ```java
 @Component
 public class CustomNotificationProvider extends AbstractNotificationProvider {
-    
+
     public CustomNotificationProvider(ExceptionNotifyProperties properties) {
         super(properties);
     }
-    
+
     @Override
     protected boolean doSendNotification(ExceptionInfo exceptionInfo) throws Exception {
         // Implement actual notification sending logic
@@ -347,7 +370,7 @@ public class CustomNotificationProvider extends AbstractNotificationProvider {
         System.out.println("Sending notification for: " + exceptionInfo.getType());
         return true;
     }
-    
+
     @Override
     public boolean isEnabled() {
         // Determine if this notification channel is enabled
@@ -449,7 +472,7 @@ try {
 
 ```java
 if (withdrawAmount > dailyLimit) {
-    Monitor.error("业务规则违反: 尝试提取 " + withdrawAmount + 
+    Monitor.error("业务规则违反: 尝试提取 " + withdrawAmount +
                   " 超过每日限额 " + dailyLimit);
     throw new BusinessRuleException("提款金额超过每日限额");
 }
