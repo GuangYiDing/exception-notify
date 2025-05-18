@@ -50,6 +50,12 @@ public class ExceptionNotifyAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public GitLabService gitLabService(ExceptionNotifyProperties properties) {
+        return new GitLabService(properties);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public EnvironmentProvider environmentProvider(Environment environment) {
         return new EnvironmentProvider(environment);
     }
