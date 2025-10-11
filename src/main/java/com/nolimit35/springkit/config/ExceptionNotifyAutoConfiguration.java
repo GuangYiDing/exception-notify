@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.List;
 
@@ -31,6 +32,7 @@ import java.util.List;
 @Configuration
 @EnableConfigurationProperties(ExceptionNotifyProperties.class)
 @ConditionalOnProperty(prefix = "exception.notify", name = "enabled", havingValue = "true", matchIfMissing = true)
+@EnableScheduling
 @Import({
     DefaultExceptionFilter.class,
     DefaultNotificationFormatter.class,
@@ -70,6 +72,12 @@ public class ExceptionNotifyAutoConfiguration {
             ExceptionNotifyProperties properties,
             TraceInfoProvider traceInfoProvider) {
         return new ExceptionAnalyzerService(gitSourceControlServices, properties, traceInfoProvider);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public ExceptionDeduplicationService exceptionDeduplicationService(ExceptionNotifyProperties properties) {
+        return new ExceptionDeduplicationService(properties);
     }
 
     @Bean
@@ -121,9 +129,10 @@ public class ExceptionNotifyAutoConfiguration {
             NotificationFormatter formatter,
             ExceptionFilter filter,
             EnvironmentProvider environmentProvider,
-            TraceInfoProvider traceInfoProvider) {
+            TraceInfoProvider traceInfoProvider,
+            ExceptionDeduplicationService deduplicationService) {
         ExceptionNotificationService notificationService = new ExceptionNotificationService(
-                properties, analyzerService, notificationManager, formatter, filter, environmentProvider, traceInfoProvider);
+                properties, analyzerService, notificationManager, formatter, filter, environmentProvider, traceInfoProvider, deduplicationService);
         log.info("异常通知组件已注入 :) ");
         return notificationService;
     }

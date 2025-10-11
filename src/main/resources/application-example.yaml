@@ -46,6 +46,10 @@ exception:
       title-template: "【${appName}】异常告警"                         # 告警标题模板
       include-stacktrace: true                                       # 是否包含完整堆栈信息
       max-stacktrace-lines: 10                                       # 堆栈信息最大行数
+      deduplication:
+        enabled: true                                                # 是否启用异常去重功能
+        time-window-minutes: 3                                       # 去重时间窗口（分钟），默认3分钟内相同异常只通知一次
+        cleanup-interval-minutes: 60                                 # 缓存清理周期（分钟），默认60分钟清理一次过期缓存
     environment:
       report-from: test,prod                                         # 需要上报异常的环境列表，多个环境用逗号分隔
 

@@ -22,6 +22,7 @@ public class ExceptionNotificationService {
     private final ExceptionFilter filter;
     private final EnvironmentProvider environmentProvider;
     private final TraceInfoProvider traceInfoProvider;
+    private final ExceptionDeduplicationService deduplicationService;
 
     public ExceptionNotificationService(
             ExceptionNotifyProperties properties,
@@ -30,7 +31,8 @@ public class ExceptionNotificationService {
             NotificationFormatter formatter,
             ExceptionFilter filter,
             EnvironmentProvider environmentProvider,
-            TraceInfoProvider traceInfoProvider) {
+            TraceInfoProvider traceInfoProvider,
+            ExceptionDeduplicationService deduplicationService) {
         this.properties = properties;
         this.analyzerService = analyzerService;
         this.notificationManager = notificationManager;
@@ -38,6 +40,7 @@ public class ExceptionNotificationService {
         this.filter = filter;
         this.environmentProvider = environmentProvider;
         this.traceInfoProvider = traceInfoProvider;
+        this.deduplicationService = deduplicationService;
     }
 
     /**
@@ -77,6 +80,12 @@ public class ExceptionNotificationService {
 
             // Add current environment to exception info
             exceptionInfo.setEnvironment(currentEnvironment);
+
+            // Check for duplicate exceptions
+            if (!deduplicationService.shouldNotify(exceptionInfo)) {
+                log.debug("Exception filtered by deduplication: {}", exceptionInfo.getType());
+                return;
+            }
 
             // Send notification via notification manager
             boolean notificationSent = notificationManager.sendNotification(exceptionInfo);

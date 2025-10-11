@@ -301,6 +301,34 @@ public class ExceptionNotifyProperties {
          * Maximum number of stacktrace lines to include
          */
         private int maxStacktraceLines = 10;
+
+        /**
+         * Deduplication configuration
+         */
+        private Deduplication deduplication = new Deduplication();
+
+        /**
+         * Deduplication configuration properties
+         */
+        @Data
+        public static class Deduplication {
+            /**
+             * Whether to enable exception deduplication
+             */
+            private boolean enabled = true;
+
+            /**
+             * Time window for deduplication in minutes
+             * Default is 3 minutes
+             */
+            private long timeWindowMinutes = 3;
+
+            /**
+             * Cleanup interval for expired cache entries in minutes
+             * Default is 60 minutes (1 hour)
+             */
+            private long cleanupIntervalMinutes = 60;
+        }
     }
 
     /**

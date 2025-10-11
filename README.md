@@ -17,6 +17,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 - 支持与分布式链路追踪系统集成，关联 TraceID
 - 支持通过钉钉机器人、飞书机器人和企业微信机器人实时推送异常告警
 - 支持腾讯云日志服务(CLS)的链路追踪
+- 支持异常去重功能，避免短时间内相同异常重复告警
 - 零侵入式设计，仅需添加依赖和简单配置即可使用
 - 支持自定义告警模板和告警规则
 
@@ -94,6 +95,10 @@ exception:
       title-template: "【${appName}】异常告警"                        # 告警标题模板
       include-stacktrace: true                                       # 是否包含完整堆栈信息
       max-stacktrace-lines: 10                                       # 堆栈信息最大行数
+      deduplication:
+        enabled: true                                                # 是否启用异常去重功能
+        time-window-minutes: 3                                       # 去重时间窗口（分钟），默认3分钟内相同异常只通知一次
+        cleanup-interval-minutes: 60                                 # 缓存清理周期（分钟），默认60分钟清理一次过期缓存
     environment:
       report-from: test,prod                                         # 需要上报异常的环境列表，多个环境用逗号分隔
 
@@ -153,6 +158,39 @@ exception:
 ```
 
 默认情况下，组件只会在 test 和 prod 环境上报异常，而在 dev 环境不上报。当前环境会自动从 Spring 的 `spring.profiles.active` 属性中读取。
+
+### 异常去重配置
+
+为了避免短时间内相同异常重复告警，Exception-Notify 提供了异常去重功能。你可以通过以下配置来启用和自定义去重策略：
+
+```yaml
+exception:
+  notify:
+    notification:
+      deduplication:
+        enabled: true                            # 是否启用异常去重功能（默认：true）
+        time-window-minutes: 3                   # 去重时间窗口（分钟），默认3分钟内相同异常只通知一次
+        cleanup-interval-minutes: 60             # 缓存清理周期（分钟），默认60分钟清理一次过期缓存
+```
+
+配置说明：
+
+- **enabled**: 是否启用异常去重功能，默认为 `true`。设置为 `false` 可以关闭去重功能
+- **time-window-minutes**: 去重时间窗口，单位为分钟。在该时间窗口内，相同的异常只会通知一次。默认值为 3 分钟
+- **cleanup-interval-minutes**: 缓存清理周期，单位为分钟。系统会定期清理过期的缓存数据，避免内存占用。默认值为 60 分钟（1 小时）
+
+**去重机制说明**：
+
+1. 异常唯一性判断基于：异常类型、异常消息和异常位置（文件名和行号）
+2. 当相同异常在时间窗口内再次发生时，会被过滤掉，不会重复发送通知
+3. 超过时间窗口后，相同的异常会重新触发通知
+4. 系统会自动清理过期的缓存数据，避免内存泄漏
+
+**使用场景**：
+
+- 高并发场景下，同一个问题可能在短时间内触发大量异常，避免告警轰炸
+- 定时任务失败时，避免每次执行都发送重复告警
+- 可以根据实际需求调整时间窗口，比如设置为 5 分钟或 10 分钟
 
 ### 包名过滤配置
 
