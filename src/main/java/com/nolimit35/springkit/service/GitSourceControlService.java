@@ -7,7 +7,7 @@ import com.nolimit35.springkit.model.CodeAuthorInfo;
  * Provides common operations for interacting with git repositories
  */
 public interface GitSourceControlService {
-    
+
     /**
      * Get author information for a specific file and line
      *
@@ -16,4 +16,14 @@ public interface GitSourceControlService {
      * @return author information or null if not found
      */
     CodeAuthorInfo getAuthorInfo(String fileName, int lineNumber);
+
+    /**
+     * Get code context around a specific line
+     *
+     * @param fileName the file name
+     * @param lineNumber the line number
+     * @param contextLines number of lines before and after to include
+     * @return code context or null if not found
+     */
+    String getCodeContext(String fileName, int lineNumber, int contextLines);
 } 

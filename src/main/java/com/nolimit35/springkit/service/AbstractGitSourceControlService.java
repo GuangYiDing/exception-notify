@@ -53,4 +53,19 @@ public abstract class AbstractGitSourceControlService implements GitSourceContro
      */
     @Override
     public abstract CodeAuthorInfo getAuthorInfo(String fileName, int lineNumber);
+
+    /**
+     * Get code context around a specific line
+     * Default implementation returns null, subclasses should override this method
+     *
+     * @param fileName the file name
+     * @param lineNumber the line number
+     * @param contextLines number of lines before and after to include
+     * @return code context or null if not found
+     */
+    @Override
+    public String getCodeContext(String fileName, int lineNumber, int contextLines) {
+        // Default implementation - subclasses should override this
+        return null;
+    }
 } 

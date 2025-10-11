@@ -76,6 +76,11 @@ public class ExceptionNotifyProperties {
     private PackageFilter packageFilter = new PackageFilter();
 
     /**
+     * AI suggestion configuration
+     */
+    private AI ai = new AI();
+
+    /**
      * DingTalk configuration properties
      */
     @Data
@@ -372,5 +377,65 @@ public class ExceptionNotifyProperties {
          * List of package names to include in exception analysis
          */
         private Set<String> includePackages = new HashSet<>();
+    }
+
+    /**
+     * AI suggestion configuration properties
+     */
+    @Data
+    public static class AI {
+        /**
+         * Whether to enable AI suggestions
+         */
+        private boolean enabled = false;
+
+        /**
+         * AI service provider (openai, azure-openai, etc.)
+         */
+        private String provider = "openai";
+
+        /**
+         * API key for the AI service
+         */
+        private String apiKey;
+
+        /**
+         * API base URL
+         * For OpenAI: https://api.openai.com/v1/chat/completions
+         * For Azure OpenAI or other compatible services: custom URL
+         */
+        private String apiUrl = "https://api.openai.com/v1/chat/completions";
+
+        /**
+         * AI model to use
+         * For OpenAI: gpt-3.5-turbo, gpt-4, gpt-4-turbo, etc.
+         */
+        private String model = "gpt-3.5-turbo";
+
+        /**
+         * Maximum tokens in the response
+         */
+        private int maxTokens = 500;
+
+        /**
+         * Temperature for response generation (0.0 - 2.0)
+         * Lower values make output more focused and deterministic
+         */
+        private double temperature = 0.7;
+
+        /**
+         * Request timeout in seconds
+         */
+        private int timeout = 30;
+
+        /**
+         * Whether to include code context when available
+         */
+        private boolean includeCodeContext = true;
+
+        /**
+         * Number of lines of code context to include (before and after the error line)
+         */
+        private int codeContextLines = 5;
     }
 } 

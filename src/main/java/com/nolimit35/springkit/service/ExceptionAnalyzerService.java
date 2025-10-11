@@ -5,12 +5,14 @@ import com.nolimit35.springkit.model.CodeAuthorInfo;
 import com.nolimit35.springkit.model.ExceptionInfo;
 import com.nolimit35.springkit.trace.TraceInfoProvider;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -22,6 +24,9 @@ public class ExceptionAnalyzerService {
     private final List<GitSourceControlService> gitSourceControlServices;
     private final ExceptionNotifyProperties properties;
     private final TraceInfoProvider traceInfoProvider;
+
+    @Autowired(required = false)
+    private AiSuggestionService aiSuggestionService;
 
     @Value("${spring.application.name:unknown}")
     private String applicationName;
@@ -73,6 +78,30 @@ public class ExceptionAnalyzerService {
             traceUrl = traceInfoProvider.generateTraceUrl(traceId);
         }
 
+        // Get AI suggestion if enabled
+        String aiSuggestion = null;
+        if (properties.getAi().isEnabled() && aiSuggestionService != null && aiSuggestionService.isAvailable()) {
+            try {
+                // Get code context if available
+                String codeContext = null;
+                if (properties.getAi().isIncludeCodeContext() && firstAppElement != null) {
+                    String fileName = convertClassNameToFilePath(firstAppElement.getClassName()) + ".java";
+                    int contextLines = properties.getAi().getCodeContextLines();
+                    codeContext = getCodeContext(fileName, firstAppElement.getLineNumber(), contextLines);
+                }
+
+                // Get AI suggestion
+                aiSuggestion = aiSuggestionService.getSuggestion(
+                    exceptionType,
+                    message,
+                    stacktrace,
+                    codeContext
+                );
+            } catch (Exception e) {
+                log.error("Error getting AI suggestion", e);
+            }
+        }
+
         // Build exception info
         return ExceptionInfo.builder()
                 .time(LocalDateTime.now())
@@ -85,6 +114,7 @@ public class ExceptionAnalyzerService {
                 .environment(properties.getEnvironment().getCurrent())
                 .authorInfo(authorInfo)
                 .traceUrl(traceUrl)
+                .aiSuggestion(aiSuggestion)
                 .build();
     }
 
@@ -100,6 +130,24 @@ public class ExceptionAnalyzerService {
             CodeAuthorInfo authorInfo = service.getAuthorInfo(fileName, lineNumber);
             if (authorInfo != null) {
                 return authorInfo;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get code context by trying all available git source control services
+     *
+     * @param fileName the file name
+     * @param lineNumber the line number
+     * @param contextLines number of lines before and after to include
+     * @return code context or null if not found
+     */
+    private String getCodeContext(String fileName, int lineNumber, int contextLines) {
+        for (GitSourceControlService service : gitSourceControlServices) {
+            String codeContext = service.getCodeContext(fileName, lineNumber, contextLines);
+            if (codeContext != null) {
+                return codeContext;
             }
         }
         return null;

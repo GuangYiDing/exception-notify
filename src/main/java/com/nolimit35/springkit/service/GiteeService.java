@@ -261,7 +261,90 @@ public class GiteeService extends AbstractGitSourceControlService {
         } catch (IOException e) {
             log.error("Error fetching author information from Gitee", e);
         }
-        
+
         return null;
+    }
+
+    /**
+     * Get code context around a specific line from Gitee
+     *
+     * @param fileName the file name
+     * @param lineNumber the line number
+     * @param contextLines number of lines before and after to include
+     * @return code context or null if not found
+     */
+    @Override
+    public String getCodeContext(String fileName, int lineNumber, int contextLines) {
+        if (!validateConfiguration(
+                properties.getGitee().getToken(),
+                properties.getGitee().getRepoOwner(),
+                properties.getGitee().getRepoName(),
+                "Gitee")) {
+            return null;
+        }
+
+        // Get the full file path
+        String filePath = getFilePathFromName(fileName);
+        if (filePath == null) {
+            log.error("Could not find file path for: {}", fileName);
+            return null;
+        }
+
+        try {
+            String url = String.format(
+                    "https://gitee.com/api/v5/repos/%s/%s/contents/%s?access_token=%s&ref=%s",
+                    properties.getGitee().getRepoOwner(),
+                    properties.getGitee().getRepoName(),
+                    filePath,
+                    properties.getGitee().getToken(),
+                    properties.getGitee().getBranch()
+            );
+
+            Request request = new Request.Builder()
+                .url(url)
+                .header("Accept", "application/vnd.gitee.v5.raw")
+                .build();
+
+            try (Response response = httpClient.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    log.error("Failed to get file content from Gitee: {}", response.code());
+                    return null;
+                }
+
+                String fileContent = response.body().string();
+                return extractCodeContext(fileContent, lineNumber, contextLines);
+            }
+        } catch (IOException e) {
+            log.error("Error fetching code context from Gitee", e);
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract code context from file content
+     *
+     * @param fileContent the complete file content
+     * @param lineNumber the target line number (1-based)
+     * @param contextLines number of lines before and after to include
+     * @return formatted code context
+     */
+    private String extractCodeContext(String fileContent, int lineNumber, int contextLines) {
+        String[] lines = fileContent.split("\n");
+
+        int startLine = Math.max(1, lineNumber - contextLines);
+        int endLine = Math.min(lines.length, lineNumber + contextLines);
+
+        StringBuilder context = new StringBuilder();
+        for (int i = startLine; i <= endLine; i++) {
+            String linePrefix = (i == lineNumber) ? ">>> " : "    ";
+            context.append(linePrefix)
+                   .append(i)
+                   .append(": ")
+                   .append(lines[i - 1])
+                   .append("\n");
+        }
+
+        return context.toString();
     }
 } 

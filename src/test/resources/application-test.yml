@@ -43,6 +43,18 @@ exception:
     trace:
       enabled: true                                                  # 是否启用链路追踪
       header-name: X-Trace-Id                                        # 链路追踪 ID 的请求头名称
+    # AI 智能建议配置
+    ai:
+      enabled: false                                                 # 是否启用 AI 建议功能（默认关闭）
+      provider: openai                                               # AI 服务提供商
+      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx                       # OpenAI API Key
+      api-url: https://api.openai.com/v1/chat/completions            # OpenAI API 地址
+      model: gpt-3.5-turbo                                           # 使用的模型
+      max-tokens: 500                                                # AI 响应的最大 token 数
+      temperature: 0.7                                               # 响应的随机性（0.0-2.0）
+      timeout: 30                                                    # 请求超时时间（秒）
+      include-code-context: true                                     # 是否包含代码上下文
+      code-context-lines: 5                                          # 代码上下文的行数
     notification:
       title-template: "【${appName}】异常告警"                         # 告警标题模板
       include-stacktrace: true                                       # 是否包含完整堆栈信息

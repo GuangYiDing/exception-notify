@@ -14,6 +14,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 - 基于 @AfterThrowing 自动捕获 Spring Boot 应用中未处理的异常
 - 分析异常堆栈，精确定位异常源码位置（文件名和行号）
 - 通过 GitHub API、GitLab API 或 Gitee API 的 Git Blame 功能获取代码提交者信息
+- **支持 AI 智能分析异常，提供修复建议（集成 GPT 等 AI 模型）**
 - 支持与分布式链路追踪系统集成，关联 TraceID
 - 支持通过钉钉机器人、飞书机器人和企业微信机器人实时推送异常告警
 - 支持腾讯云日志服务(CLS)的链路追踪
@@ -86,6 +87,18 @@ exception:
     trace:
       enabled: true                                                  # 是否启用链路追踪
       header-name: X-Trace-Id                                        # 链路追踪 ID 的请求头名称
+    # AI 智能建议配置（可选）
+    ai:
+      enabled: false                                                 # 是否启用 AI 建议功能
+      provider: openai                                               # AI 服务提供商
+      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx                       # OpenAI API Key
+      api-url: https://api.openai.com/v1/chat/completions            # OpenAI API 地址
+      model: gpt-3.5-turbo                                           # 使用的模型
+      max-tokens: 500                                                # AI 响应的最大 token 数
+      temperature: 0.7                                               # 响应的随机性（0.0-2.0）
+      timeout: 30                                                    # 请求超时时间（秒）
+      include-code-context: true                                     # 是否包含代码上下文
+      code-context-lines: 5                                          # 代码上下文的行数
     package-filter:
       enabled: false                                                 # 是否启用包名过滤
       include-packages:                                              # 需要解析的包名列表
@@ -135,6 +148,17 @@ spring:
 TraceID：7b2d1e8f9c3a5b4d6e8f9c3a5b4d6e8f
 云日志链路：https://console.cloud.tencent.com/cls/search?region=ap-guangzhou&topic_id=xxx-xxx-xxx&interactiveQueryBase64=xxxx
 -------------------------------
+### AI 建议：
+
+**异常原因分析：**
+该异常是由于尝试在 null 对象上调用方法导致的空指针异常。从堆栈信息可以看出，在 UserService.processData 方法的第 42 行，str 变量为 null。
+
+**修复建议：**
+1. 在调用 str.length() 之前，添加空值检查：if (str != null)
+2. 考虑使用 Optional<String> 来更安全地处理可能为空的字符串
+3. 检查上游调用链，确保 str 参数在传入时不为 null
+
+-------------------------------
 堆栈信息：
 java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is null
     at com.example.service.UserService.processData(UserService.java:42)
@@ -143,6 +167,8 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
     ...
 处理人: @张三
 ```
+
+> **注意**：AI 建议部分需要启用 AI 功能才会显示。
 
 ## 高级配置
 
@@ -310,6 +336,64 @@ exception:
 
 启用@功能后，当异常发生时，系统会根据Git提交信息找到对应的责任人，并在告警消息中@相关人员，提高异常处理的及时性和准确性。
 
+### AI 智能建议配置
+
+Exception-Notify 支持集成 AI 模型（如 GPT）来智能分析异常，并提供修复建议。AI 会根据异常类型、堆栈信息和代码上下文给出简洁的分析和修复建议。
+
+```yaml
+exception:
+  notify:
+    ai:
+      enabled: true                                          # 是否启用 AI 建议功能
+      provider: openai                                       # AI 服务提供商（目前支持 openai）
+      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx               # OpenAI API Key
+      api-url: https://api.openai.com/v1/chat/completions    # OpenAI API 地址（可自定义为兼容的服务）
+      model: gpt-3.5-turbo                                   # 使用的模型（gpt-3.5-turbo、gpt-4 等）
+      max-tokens: 500                                        # AI 响应的最大 token 数
+      temperature: 0.7                                       # 响应的随机性（0.0-2.0，越低越确定）
+      timeout: 30                                            # 请求超时时间（秒）
+      include-code-context: true                             # 是否包含代码上下文
+      code-context-lines: 5                                  # 代码上下文的行数（异常位置前后各几行）
+```
+
+**配置说明**：
+
+1. **enabled**: 是否启用 AI 建议功能，默认为 `false`
+2. **provider**: AI 服务提供商，目前支持 `openai`（兼容 OpenAI API 的服务）
+3. **api-key**: OpenAI API Key，需要从 OpenAI 官网获取
+4. **api-url**: API 地址，默认为 OpenAI 官方地址，也可以配置为兼容 OpenAI API 的服务（如 Azure OpenAI）
+5. **model**: 使用的 AI 模型，推荐使用 `gpt-3.5-turbo`（性价比高）或 `gpt-4`（更准确）
+6. **max-tokens**: AI 响应的最大 token 数，默认 500
+7. **temperature**: 控制响应的随机性，值越低输出越确定，默认 0.7
+8. **timeout**: 请求超时时间，默认 30 秒
+9. **include-code-context**: 是否在 AI 分析时包含异常位置的代码上下文，默认为 `true`
+10. **code-context-lines**: 代码上下文的行数，即异常位置前后各包含几行代码，默认 5 行
+
+**AI 建议示例**：
+
+当启用 AI 建议功能后，异常告警消息中会包含类似以下的 AI 建议部分：
+
+```
+-------------------------------
+### AI 建议：
+
+**异常原因分析：**
+该异常是由于尝试在 null 对象上调用方法导致的空指针异常。从堆栈信息可以看出，在 UserService.processData 方法的第 42 行，str 变量为 null。
+
+**修复建议：**
+1. 在调用 str.length() 之前，添加空值检查：if (str != null)
+2. 考虑使用 Optional<String> 来更安全地处理可能为空的字符串
+3. 检查上游调用链，确保 str 参数在传入时不为 null
+-------------------------------
+```
+
+**注意事项**：
+
+- AI 建议功能需要访问外部 AI 服务，请确保网络连接正常
+- 使用 OpenAI API 会产生费用，请合理配置 `max-tokens` 和使用频率
+- 代码上下文需要配置 Git 代码托管平台（GitHub/GitLab/Gitee）才能获取
+- AI 建议不保证 100% 准确，仅供参考，实际修复时需要结合具体业务逻辑
+- 如果 AI 服务调用失败，不会影响异常通知的正常发送
 
 ### 自定义异常过滤
 

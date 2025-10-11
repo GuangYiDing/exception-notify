@@ -55,9 +55,14 @@ public class ExceptionInfo {
      * Code author information
      */
     private CodeAuthorInfo authorInfo;
-    
+
     /**
      * Trace URL
      */
     private String traceUrl;
+
+    /**
+     * AI suggestion for the exception
+     */
+    private String aiSuggestion;
 } 

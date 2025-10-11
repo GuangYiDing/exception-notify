@@ -76,13 +76,20 @@ public class DefaultNotificationFormatter implements NotificationFormatter {
         // Format trace ID if available
         if (exceptionInfo.getTraceId() != null && !exceptionInfo.getTraceId().isEmpty()) {
             sb.append("**TraceID：** ").append(exceptionInfo.getTraceId()).append("\n\n");
-            
+
             // Include CLS trace URL as a clickable link if available
             if (exceptionInfo.getTraceUrl() != null && !exceptionInfo.getTraceUrl().isEmpty()) {
                 sb.append("**云日志链路：** [点击查看日志](").append(exceptionInfo.getTraceUrl()).append(")\n\n");
             }
         }
-        
+
+        // Format AI suggestion if available
+        if (exceptionInfo.getAiSuggestion() != null && !exceptionInfo.getAiSuggestion().isEmpty()) {
+            sb.append("---\n\n");
+            sb.append("### AI 建议：\n\n");
+            sb.append(exceptionInfo.getAiSuggestion()).append("\n\n");
+        }
+
         sb.append("---\n\n");
         
         // Format stacktrace if enabled
