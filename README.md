@@ -5,26 +5,26 @@
 
 [English](README_EN.md) | [简体中文](README.md)
 
-## 简介
+## 📖 简介
 
 Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot 应用中未处理的异常，并通过钉钉、飞书或企业微信实时告警通知。它能够自动分析异常堆栈信息，定位到异常发生的源代码文件和行号，并通过 GitHub、GitLab 或 Gitee API 获取代码提交者信息，最终将异常详情、TraceID 以及责任人信息发送到钉钉群、飞书群或企业微信群，实现异常的实时上报与全链路追踪。
 
-## 功能特点
+## ✨ 功能特点
 
-- 基于 @AfterThrowing 自动捕获 Spring Boot 应用中未处理的异常
-- 分析异常堆栈，精确定位异常源码位置（文件名和行号）
-- 通过 GitHub API、GitLab API 或 Gitee API 的 Git Blame 功能获取代码提交者信息
-- **支持 AI 智能分析异常，提供修复建议（集成 GPT 等 AI 模型）**
-- 支持与分布式链路追踪系统集成，关联 TraceID
-- 支持通过钉钉机器人、飞书机器人和企业微信机器人实时推送异常告警
-- 支持腾讯云日志服务(CLS)的链路追踪
-- 支持异常去重功能，避免短时间内相同异常重复告警
-- 零侵入式设计，仅需添加依赖和简单配置即可使用
-- 支持自定义告警模板和告警规则
+- 🎯 基于 @AfterThrowing 自动捕获 Spring Boot 应用中未处理的异常
+- 🔍 分析异常堆栈，精确定位异常源码位置（文件名和行号）
+- 👤 通过 GitHub API、GitLab API 或 Gitee API 的 Git Blame 功能获取代码提交者信息
+- 🤖 **支持 AI 智能分析异常，提供修复建议（集成 GPT 等 AI 模型）**
+- 🔗 支持与分布式链路追踪系统集成，关联 TraceID
+- 📢 支持通过钉钉机器人、飞书机器人和企业微信机器人实时推送异常告警
+- ☁️ 支持腾讯云日志服务(CLS)的链路追踪
+- 🛡️ 支持异常去重功能，避免短时间内相同异常重复告警
+- 💡 零侵入式设计，仅需添加依赖和简单配置即可使用
+- 🎨 支持自定义告警模板和告警规则
 
-## 快速开始
+## 🚀 快速开始
 
-### 1. 添加依赖
+### 1️⃣ 添加依赖
 
 在你的 Spring Boot 项目的 `pom.xml` 文件中添加以下依赖：
 
@@ -36,7 +36,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 </dependency>
 ```
 
-### 2. 配置参数
+### 2️⃣ 配置参数
 
 在 `application.yml` 或 `application.properties` 中添加以下配置：
 
@@ -127,11 +127,11 @@ spring:
 
 > **注意**：当前环境会自动从 Spring 的 `spring.profiles.active` 属性中读取，无需手动设置。只有在 `exception.notify.environment.report-from` 列表中的环境才会上报异常，默认只上报 test 和 prod 环境的异常。
 
-### 3. 启动应用
+### 3️⃣ 启动应用
 
 启动你的 Spring Boot 应用，Exception-Notify 将自动注册全局异常处理器，捕获所有被 @Controller 或 @RestController 或 @ExceptionNotify 标记的类中未处理的异常并发送告警。
 
-## 告警示例
+## 📮 告警示例
 
 当应用发生未处理的异常时，钉钉群或企业微信群将收到类似以下格式的告警消息：
 
@@ -170,9 +170,9 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
 
 > **注意**：AI 建议部分需要启用 AI 功能才会显示。
 
-## 高级配置
+## ⚙️ 高级配置
 
-### 环境配置
+### 🌍 环境配置
 
 你可以通过配置 `exception.notify.environment.report-from` 属性来指定哪些环境需要上报异常：
 
@@ -185,7 +185,7 @@ exception:
 
 默认情况下，组件只会在 test 和 prod 环境上报异常，而在 dev 环境不上报。当前环境会自动从 Spring 的 `spring.profiles.active` 属性中读取。
 
-### 异常去重配置
+### 🛡️ 异常去重配置
 
 为了避免短时间内相同异常重复告警，Exception-Notify 提供了异常去重功能。你可以通过以下配置来启用和自定义去重策略：
 
@@ -218,7 +218,7 @@ exception:
 - 定时任务失败时，避免每次执行都发送重复告警
 - 可以根据实际需求调整时间窗口，比如设置为 5 分钟或 10 分钟
 
-### 包名过滤配置
+### 📦 包名过滤配置
 
 你可以通过配置 `exception.notify.package-filter` 来控制异常堆栈分析时只关注特定包名下的代码：
 
@@ -234,7 +234,7 @@ exception:
 
 当启用包名过滤功能后，异常分析器会优先从指定的包名列表中寻找异常堆栈信息，这对于定位业务代码中的问题特别有用。如果没有找到匹配的堆栈信息，会使用原始的过滤逻辑。
 
-### 腾讯云日志服务(CLS)集成
+### ☁️ 腾讯云日志服务(CLS)集成
 
 如果你使用了腾讯云日志服务(CLS)，可以配置相关参数来在异常告警中添加云日志链路：
 
@@ -250,7 +250,7 @@ exception:
 
 当同时配置了 CLS 参数和链路追踪，异常告警消息中会包含指向云日志的链接，方便快速查看完整的日志上下文。
 
-### 代码提交者信息集成
+### 👤 代码提交者信息集成
 
 Exception-Notify 支持通过 GitHub API、GitLab API 或 Gitee API 获取代码提交者信息。你需要选择其中一种方式进行配置，不能同时配置多者：
 
@@ -294,7 +294,7 @@ exception:
 > **注意**：GitHub、GitLab 和 Gitee 配置是互斥的，系统只能从一个代码托管平台读取提交信息。如果同时配置了多个，将按照 Gitee、GitLab、GitHub 的优先顺序选择。
 
 
-### 通知@功能配置
+### 📣 通知@功能配置
 
 异常通知支持在钉钉、飞书或企业微信群中@相关责任人，以便更快地引起注意。你可以通过以下配置来启用和自定义@功能：
 
@@ -336,7 +336,7 @@ exception:
 
 启用@功能后，当异常发生时，系统会根据Git提交信息找到对应的责任人，并在告警消息中@相关人员，提高异常处理的及时性和准确性。
 
-### AI 智能建议配置
+### 🤖 AI 智能建议配置
 
 Exception-Notify 支持集成 AI 模型（如 GPT）来智能分析异常，并提供修复建议。AI 会根据异常类型、堆栈信息和代码上下文给出简洁的分析和修复建议。
 
@@ -395,7 +395,7 @@ exception:
 - AI 建议不保证 100% 准确，仅供参考，实际修复时需要结合具体业务逻辑
 - 如果 AI 服务调用失败，不会影响异常通知的正常发送
 
-### 自定义异常过滤
+### 🔧 自定义异常过滤
 
 你可以通过实现 `ExceptionFilter` 接口并注册为 Spring Bean 来自定义哪些异常需要告警：
 
@@ -413,7 +413,7 @@ public class CustomExceptionFilter implements ExceptionFilter {
 }
 ```
 
-### 自定义告警内容
+### 🎨 自定义告警内容
 
 通过实现 `NotificationFormatter` 接口并注册为 Spring Bean 来自定义告警内容格式：
 
@@ -428,7 +428,7 @@ public class CustomNotificationFormatter implements NotificationFormatter {
 }
 ```
 
-### 自定义链路追踪
+### 🔗 自定义链路追踪
 
 你可以通过实现 `TraceInfoProvider` 接口并注册为 Spring Bean 来自定义如何获取 TraceID 和生成链路追踪 URL：
 
@@ -451,7 +451,7 @@ public class CustomTraceInfoProvider implements TraceInfoProvider {
 
 默认实现 `DefaultTraceInfoProvider` 会从 MDC 或请求头中获取 TraceID，并生成腾讯云日志服务(CLS)的链路追踪 URL。
 
-### 自定义通知渠道
+### 📱 自定义通知渠道
 
 您可以通过实现 `NotificationProvider` 接口来添加自定义通知渠道：
 
@@ -501,7 +501,7 @@ public class CustomNotificationProvider extends AbstractNotificationProvider {
 }
 ```
 
-## Monitor 工具类
+## 📊 Monitor 工具类
 
 Monitor 是一个简单易用的工具类，可以在记录日志的同时，将消息通过 Exception-Notify 配置的通知渠道（如钉钉、飞书或企业微信）发送出去。
 
@@ -614,7 +614,7 @@ Monitor.error("订单 #12345 状态从 PENDING 变更为 FAILED");
 - 当链路追踪功能启用时，TraceID 会自动从 MDC 或请求头中获取
 - 如果配置了腾讯云日志服务(CLS)，通知中将包含可点击的日志链接
 
-## 工作原理
+## 🔧 工作原理
 
 1. 通过 Spring AOP 的 `@AfterThrowing` 注解机制捕获未处理的异常
 2. 分析异常堆栈信息，提取出异常发生的源代码文件和行号
@@ -623,17 +623,17 @@ Monitor.error("订单 #12345 状态从 PENDING 变更为 FAILED");
 5. 将异常信息、代码提交者信息和 TraceID 组装成告警消息
 6. 通过钉钉机器人或企业微信机器人 Webhook 接口发送告警消息到指定群组
 
-## 注意事项
+## ⚠️ 注意事项
 
 - 需要确保应用有访问 GitHub API、GitLab API 或 Gitee API 的网络权限
 - GitHub Token、GitLab Token 或 Gitee Token 需要有仓库的读取权限
 - 钉钉机器人和企业微信机器人需要正确配置安全设置
 - 为了获取准确的代码提交者信息，确保代码仓库与实际部署的代码版本一致
 
-## 贡献指南
+## 🤝 贡献指南
 
 欢迎提交 Issue 和 Pull Request 来帮助改进这个项目。
 
-## 许可证
+## 📄 许可证
 
 本项目采用 [Apache License 2.0](LICENSE) 许可证。

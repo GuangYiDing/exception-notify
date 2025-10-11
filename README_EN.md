@@ -5,25 +5,26 @@
 
 [English](README_EN.md) | [简体中文](README.md)
 
-## Introduction
+## 📖 Introduction
 
 Exception-Notify is a Spring Boot Starter component designed to capture unhandled exceptions in Spring Boot applications and send real-time alerts through DingTalk, Feishu or WeChat Work. It automatically analyzes exception stack traces, pinpoints the source code file and line number where the exception occurred, and retrieves code committer information through GitHub, GitLab or Gitee APIs. Finally, it sends exception details, TraceID, and responsible person information to a DingTalk, Feishu or WeChat Work group, enabling real-time exception reporting and full-chain tracking.
 
-## Features
+## ✨ Features
 
-- Basing on `@AfterThrowing` to automatically capture unhandled exceptions in Spring Boot applications
-- Stack trace analysis to precisely locate exception source (file name and line number)
-- Retrieval of code committer information via GitHub API, GitLab API or Gitee API's Git Blame feature
-- Integration with distributed tracing systems to correlate TraceID
-- Support for real-time exception alerts via DingTalk robot, Feishu robot and WeChat Work robot
-- Support for Tencent Cloud Log Service (CLS) trace linking
-- Exception deduplication to prevent repeated alerts for the same exception within a time window
-- Zero-intrusion design, requiring only dependency addition and simple configuration
-- Support for custom alert templates and rules
+- 🎯 Basing on `@AfterThrowing` to automatically capture unhandled exceptions in Spring Boot applications
+- 🔍 Stack trace analysis to precisely locate exception source (file name and line number)
+- 👤 Retrieval of code committer information via GitHub API, GitLab API or Gitee API's Git Blame feature
+- 🤖 **AI-powered intelligent exception analysis with repair suggestions (integrated with GPT and other AI models)**
+- 🔗 Integration with distributed tracing systems to correlate TraceID
+- 📢 Support for real-time exception alerts via DingTalk robot, Feishu robot and WeChat Work robot
+- ☁️ Support for Tencent Cloud Log Service (CLS) trace linking
+- 🛡️ Exception deduplication to prevent repeated alerts for the same exception within a time window
+- 💡 Zero-intrusion design, requiring only dependency addition and simple configuration
+- 🎨 Support for custom alert templates and rules
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Add Dependency
+### 1️⃣ Add Dependency
 
 Add the following dependency to your Spring Boot project's `pom.xml` file:
 
@@ -35,7 +36,7 @@ Add the following dependency to your Spring Boot project's `pom.xml` file:
 </dependency>
 ```
 
-### 2. Configure Parameters
+### 2️⃣ Configure Parameters
 
 Add the following configuration to your `application.yml` or `application.properties`:
 
@@ -86,6 +87,18 @@ exception:
     trace:
       enabled: true                                                  # Enable trace linking
       header-name: X-Trace-Id                                        # Trace ID request header name
+    # AI intelligent suggestion configuration (optional)
+    ai:
+      enabled: false                                                 # Enable AI suggestion feature
+      provider: openai                                               # AI service provider
+      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx                       # OpenAI API Key
+      api-url: https://api.openai.com/v1/chat/completions            # OpenAI API endpoint
+      model: gpt-3.5-turbo                                           # Model to use
+      max-tokens: 500                                                # Maximum tokens for AI response
+      temperature: 0.7                                               # Randomness of response (0.0-2.0)
+      timeout: 30                                                    # Request timeout in seconds
+      include-code-context: true                                     # Include code context
+      code-context-lines: 5                                          # Number of code context lines
     package-filter:
       enabled: false                                                 # Enable package name filtering
       include-packages:                                              # List of packages to include in analysis
@@ -114,11 +127,11 @@ spring:
 
 > **Note**: The current environment is automatically read from Spring's `spring.profiles.active` property, so manual setting is not required. Exceptions are only reported from environments listed in `exception.notify.environment.report-from`. By default, exceptions are only reported from test and prod environments.
 
-### 3. Start the Application
+### 3️⃣ Start the Application
 
 Start your Spring Boot application, and Exception-Notify will automatically register a global exception handler to capture unhandled exceptions in classes marked with @Controller, @RestController, or @ExceptionNotify and send alerts.
 
-## Alert Example
+## 📮 Alert Example
 
 When an unhandled exception occurs in the application, a message like the following will be sent to the DingTalk or WeChat Work group:
 
@@ -135,6 +148,17 @@ Last Commit Time: 2023-03-15 10:23:18
 TraceID: 7b2d1e8f9c3a5b4d6e8f9c3a5b4d6e8f
 Cloud Log Link: https://console.cloud.tencent.com/cls/search?region=ap-guangzhou&topic_id=xxx-xxx-xxx&interactiveQueryBase64=xxxx
 -------------------------------
+### AI Suggestion:
+
+**Root Cause Analysis:**
+The exception is caused by attempting to invoke a method on a null object, resulting in a NullPointerException. From the stack trace, the str variable is null at line 42 in UserService.processData.
+
+**Recommended Fixes:**
+1. Add null check before calling str.length(): if (str != null)
+2. Consider using Optional<String> for safer handling of potentially null strings
+3. Check the upstream call chain to ensure str parameter is not null when passed in
+
+-------------------------------
 Stack Trace:
 java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is null
     at com.example.service.UserService.processData(UserService.java:42)
@@ -144,9 +168,11 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
 mention: @John Doe
 ```
 
-## Advanced Configuration
+> **Note**: AI suggestion section will only be displayed when AI feature is enabled.
 
-### Environment Configuration
+## ⚙️ Advanced Configuration
+
+### 🌍 Environment Configuration
 
 You can specify which environments should report exceptions by configuring the `exception.notify.environment.report-from` property:
 
@@ -159,7 +185,7 @@ exception:
 
 By default, the component only reports exceptions from test and prod environments, but not from the dev environment. The current environment is automatically read from Spring's `spring.profiles.active` property.
 
-### Exception Deduplication Configuration
+### 🛡️ Exception Deduplication Configuration
 
 To avoid repeated alerts for the same exception within a short time period, Exception-Notify provides exception deduplication functionality. You can enable and customize the deduplication strategy with the following configuration:
 
@@ -192,7 +218,7 @@ Configuration details:
 - When scheduled tasks fail, avoid sending duplicate alerts on every execution
 - The time window can be adjusted according to actual needs, such as 5 or 10 minutes
 
-### Package Filter Configuration
+### 📦 Package Filter Configuration
 
 You can control which package names to focus on during exception stack trace analysis by configuring `exception.notify.package-filter`:
 
@@ -208,7 +234,7 @@ exception:
 
 When package filtering is enabled, the exception analyzer will prioritize finding stack trace information from the specified package list, which is particularly useful for locating problems in business code. If no matching stack information is found, the original filtering logic will be used.
 
-### Tencent Cloud Log Service (CLS) Integration
+### ☁️ Tencent Cloud Log Service (CLS) Integration
 
 If you use Tencent Cloud Log Service (CLS), you can configure the relevant parameters to add cloud log links to exception alerts:
 
@@ -224,7 +250,7 @@ exception:
 
 When both CLS parameters and trace linking are configured, the exception alert message will include a link to the cloud logs, making it easy to quickly view the complete log context.
 
-### Code Committer Information Integration
+### 👤 Code Committer Information Integration
 
 Exception-Notify supports retrieving code committer information via GitHub API, GitLab API, or Gitee API. You need to choose one of these methods for configuration, as they cannot be used simultaneously:
 
@@ -268,7 +294,7 @@ exception:
 > **Note**: GitHub, GitLab, and Gitee configurations are mutually exclusive; the system can only read commit information from one code hosting platform. If multiple are configured, preference order is Gitee, then GitLab, then GitHub.
 
 
-### Notification @ Mention Configuration
+### 📣 Notification @ Mention Configuration
 
 Exception notifications support @mentioning responsible persons in DingTalk, Feishu, or WeChat Work groups to draw attention more quickly. You can enable and customize the @ mention feature with the following configuration:
 
@@ -310,7 +336,66 @@ Configuration details:
 
 When the @ mention feature is enabled, the system will identify the responsible person based on Git commit information and mention them in the alert message, improving the timeliness and accuracy of exception handling.
 
-### Custom Exception Filtering
+### 🤖 AI Intelligent Suggestion Configuration
+
+Exception-Notify supports integrating AI models (such as GPT) to intelligently analyze exceptions and provide repair suggestions. AI will provide concise analysis and repair suggestions based on exception type, stack information, and code context.
+
+```yaml
+exception:
+  notify:
+    ai:
+      enabled: true                                          # Enable AI suggestion feature
+      provider: openai                                       # AI service provider (currently supports openai)
+      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx               # OpenAI API Key
+      api-url: https://api.openai.com/v1/chat/completions    # OpenAI API endpoint (can be customized for compatible services)
+      model: gpt-3.5-turbo                                   # Model to use (gpt-3.5-turbo, gpt-4, etc.)
+      max-tokens: 500                                        # Maximum tokens for AI response
+      temperature: 0.7                                       # Randomness of response (0.0-2.0, lower is more deterministic)
+      timeout: 30                                            # Request timeout in seconds
+      include-code-context: true                             # Include code context
+      code-context-lines: 5                                  # Number of code context lines (before and after exception location)
+```
+
+**Configuration Details**:
+
+1. **enabled**: Enable AI suggestion feature, default is `false`
+2. **provider**: AI service provider, currently supports `openai` (compatible with OpenAI API services)
+3. **api-key**: OpenAI API Key, obtain from OpenAI official website
+4. **api-url**: API endpoint, defaults to OpenAI official address, can also be configured for services compatible with OpenAI API (such as Azure OpenAI)
+5. **model**: AI model to use, recommended `gpt-3.5-turbo` (cost-effective) or `gpt-4` (more accurate)
+6. **max-tokens**: Maximum tokens for AI response, default 500
+7. **temperature**: Controls randomness of response, lower values produce more deterministic output, default 0.7
+8. **timeout**: Request timeout, default 30 seconds
+9. **include-code-context**: Include code context around exception location when analyzing, default is `true`
+10. **code-context-lines**: Number of code context lines, i.e., how many lines before and after exception location to include, default 5 lines
+
+**AI Suggestion Example**:
+
+When AI suggestion feature is enabled, exception alert messages will include an AI suggestion section similar to the following:
+
+```
+-------------------------------
+### AI Suggestion:
+
+**Root Cause Analysis:**
+The exception is caused by attempting to invoke a method on a null object, resulting in a NullPointerException. From the stack trace, the str variable is null at line 42 in UserService.processData.
+
+**Recommended Fixes:**
+1. Add null check before calling str.length(): if (str != null)
+2. Consider using Optional<String> for safer handling of potentially null strings
+3. Check the upstream call chain to ensure str parameter is not null when passed in
+-------------------------------
+```
+
+**Important Notes**:
+
+- AI suggestion feature requires access to external AI services, ensure network connectivity is available
+- Using OpenAI API incurs costs, please configure `max-tokens` and usage frequency appropriately
+- Code context requires Git code hosting platform (GitHub/GitLab/Gitee) configuration to retrieve
+- AI suggestions are not guaranteed to be 100% accurate and are for reference only; actual fixes need to consider specific business logic
+- If AI service call fails, it will not affect normal exception notification delivery
+
+### 🔧 Custom Exception Filtering
 
 You can customize which exceptions should trigger alerts by implementing the `ExceptionFilter` interface and registering it as a Spring Bean:
 
@@ -328,7 +413,7 @@ public class CustomExceptionFilter implements ExceptionFilter {
 }
 ```
 
-### Custom Alert Content
+### 🎨 Custom Alert Content
 
 You can customize the alert content format by implementing the `NotificationFormatter` interface and registering it as a Spring Bean:
 
@@ -343,7 +428,7 @@ public class CustomNotificationFormatter implements NotificationFormatter {
 }
 ```
 
-### Custom Trace Information
+### 🔗 Custom Trace Information
 
 You can customize how TraceID is retrieved and trace URLs are generated by implementing the `TraceInfoProvider` interface and registering it as a Spring Bean:
 
@@ -366,7 +451,7 @@ public class CustomTraceInfoProvider implements TraceInfoProvider {
 
 The default implementation `DefaultTraceInfoProvider` retrieves TraceID from MDC or request headers and generates Tencent Cloud Log Service (CLS) trace URLs.
 
-## Customization
+## 🎨 Customization
 
 ### Custom Notification Format
 
@@ -398,7 +483,7 @@ public class CustomExceptionFilter implements ExceptionFilter {
 }
 ```
 
-### Custom Notification Channel
+### 📱 Custom Notification Channel
 
 You can add a custom notification channel by implementing the `NotificationProvider` interface:
 
@@ -449,7 +534,7 @@ public class CustomNotificationProvider extends AbstractNotificationProvider {
 }
 ```
 
-## Monitor Utility
+## 📊 Monitor Utility
 
 Monitor is a simple utility class that allows you to record logs and send messages through notification channels configured in Exception-Notify (such as DingTalk, Feishu, or WeChat Work).
 
@@ -562,7 +647,7 @@ Monitor.error("Order #12345 status changed from PENDING to FAILED");
 - TraceID is automatically captured from MDC or request headers when trace is enabled
 - If Tencent CLS is configured, clickable log links will be included in notifications
 
-## How It Works
+## 🔧 How It Works
 
 1. Captures unhandled exceptions through Spring AOP's `@AfterThrowing` annotation mechanism
 2. Analyzes exception stack trace information to extract the source code file and line number where the exception occurred
@@ -571,17 +656,17 @@ Monitor.error("Order #12345 status changed from PENDING to FAILED");
 5. Assembles exception information, code committer information, and TraceID into an alert message
 6. Sends the alert message to the specified group through DingTalk or WeChat Work robot Webhook interface
 
-## Precautions
+## ⚠️ Precautions
 
 - Ensure the application has network permissions to access GitHub API, GitLab API, or Gitee API
 - GitHub Token, GitLab Token, or Gitee Token needs repository read permission
 - DingTalk and WeChat Work robots need to be correctly configured with security settings
 - To get accurate code committer information, ensure the code repository is consistent with the deployed code version
 
-## Contribution Guidelines
+## 🤝 Contribution Guidelines
 
 Issues and Pull Requests are welcome to help improve this project.
 
-## License
+## 📄 License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
