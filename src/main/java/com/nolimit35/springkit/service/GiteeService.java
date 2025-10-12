@@ -1,7 +1,9 @@
 package com.nolimit35.springkit.service;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Base64;
 
 import org.springframework.stereotype.Service;
 
@@ -302,7 +304,7 @@ public class GiteeService extends AbstractGitSourceControlService {
 
             Request request = new Request.Builder()
                 .url(url)
-                .header("Accept", "application/vnd.gitee.v5.raw")
+                .header("Content-Type", "application/json;charset=UTF-8")
                 .build();
 
             try (Response response = httpClient.newCall(request).execute()) {
@@ -311,7 +313,21 @@ public class GiteeService extends AbstractGitSourceControlService {
                     return null;
                 }
 
-                String fileContent = response.body().string();
+                String responseBody = response.body().string();
+                JsonNode contentData = objectMapper.readTree(responseBody);
+
+                // Check if the response contains base64 encoded content
+                JsonNode contentNode = contentData.get("content");
+                if (contentNode == null) {
+                    log.error("No content field found in Gitee response");
+                    return null;
+                }
+
+                // Decode base64 content
+                String base64Content = contentNode.asText().replaceAll("\\s", ""); // Remove whitespace
+                byte[] decodedBytes = Base64.getDecoder().decode(base64Content);
+                String fileContent = new String(decodedBytes, StandardCharsets.UTF_8);
+
                 return extractCodeContext(fileContent, lineNumber, contextLines);
             }
         } catch (IOException e) {
