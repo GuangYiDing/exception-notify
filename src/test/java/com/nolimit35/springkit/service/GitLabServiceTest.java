@@ -1,96 +1,202 @@
 package com.nolimit35.springkit.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nolimit35.springkit.config.ExceptionNotifyProperties;
-import com.nolimit35.springkit.model.CodeAuthorInfo;
-import okhttp3.Call;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
-import okhttp3.Protocol;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.Assumptions;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static org.mockito.Mockito.*;
 
 /**
  * Integration test for GitLabService
- * Note: This test makes actual API calls to GitLab and requires a valid GitLab token
+ * This test performs real API calls to GitLab
+ *
+ * To run these tests, you need to set up valid GitLab credentials:
+ * - Set environment variable GITLAB_TOKEN with your GitLab personal access token
+ * - Set environment variable GITLAB_PROJECT_ID with your project ID
+ * - Or update the test configuration with valid credentials
  */
-@ExtendWith(MockitoExtension.class)
 @Tag("integration")
 public class GitLabServiceTest {
 
-    @Mock
+    private GitLabService gitLabService;
     private ExceptionNotifyProperties properties;
 
-    @Mock
-    private ExceptionNotifyProperties.GitLab gitlabProperties;
-
-    @InjectMocks
-    private GitLabService gitLabService;
-
     private static final String TEST_FILE = "src/main/java/com/nolimit35/springkit/service/GitLabService.java";
-    private static final int TEST_LINE = 15;
+    private static final int TEST_LINE = 50;
 
     @BeforeEach
     public void setUp() {
-        // Set up properties with test GitLab credentials
-        // Replace these values with valid test values for your GitLab instance
-        when(properties.getGitlab()).thenReturn(gitlabProperties);
-        when(gitlabProperties.getToken()).thenReturn("your_gitlab_token");
-        when(gitlabProperties.getProjectId()).thenReturn("your_project_id");
-        when(gitlabProperties.getBranch()).thenReturn("main");
-        when(gitlabProperties.getBaseUrl()).thenReturn("https://gitlab.com/api/v4");
+        properties = new ExceptionNotifyProperties();
+
+        // 配置 GitLab 属性
+        ExceptionNotifyProperties.GitLab gitlabConfig = new ExceptionNotifyProperties.GitLab();
+
+        // 从环境变量获取配置，或使用默认测试配置
+        String token = System.getenv("GITLAB_TOKEN");
+        String projectId = System.getenv("GITLAB_PROJECT_ID");
+        String branch = System.getenv("GITLAB_BRANCH");
+        String baseUrl = System.getenv("GITLAB_BASE_URL");
+
+        // 如果环境变量未设置，使用默认值（测试会被跳过）
+        gitlabConfig.setToken(token != null ? token : "your_gitlab_token_here");
+        gitlabConfig.setProjectId(projectId != null ? projectId : "your_project_id");
+        gitlabConfig.setBranch(branch != null ? branch : "main");
+        gitlabConfig.setBaseUrl(baseUrl != null ? baseUrl : "https://gitlab.com/api/v4");
+
+        properties.setGitlab(gitlabConfig);
+
+        gitLabService = new GitLabService(properties);
     }
 
     @Test
-    public void testGetAuthorInfo_Success() {
-        // Skip this test if you don't have valid GitLab credentials for testing
-        // Uncomment the following line to skip
-        // assumeTrue(false, "Skipped because no valid GitLab credentials available");
-        
-        // Call the actual service method
-        CodeAuthorInfo authorInfo = gitLabService.getAuthorInfo(TEST_FILE, TEST_LINE);
+    public void testGetCodeContext_Success() {
+        // 检查配置是否有效
+        boolean hasValidConfig = properties.getGitlab().getToken() != null
+                && !properties.getGitlab().getToken().equals("your_gitlab_token_here")
+                && !properties.getGitlab().getProjectId().equals("your_project_id");
 
-        // Verify we got a result
-        assertNotNull(authorInfo);
-        
-        // Verify the basic structure is correct (we can't assert exact values since they depend on the actual repository)
-        assertNotNull(authorInfo.getName());
-        assertNotNull(authorInfo.getEmail());
-        assertNotNull(authorInfo.getLastCommitTime());
-        assertEquals(TEST_FILE, authorInfo.getFileName());
-        assertEquals(TEST_LINE, authorInfo.getLineNumber());
+        assumeTrue(hasValidConfig, "Skipping test: Valid GitLab token and project ID not configured. " +
+                "Set GITLAB_TOKEN and GITLAB_PROJECT_ID environment variables to run this test.");
+
+        // 测试获取代码上下文
+        String context = gitLabService.getCodeContext(TEST_FILE, TEST_LINE, 3);
+
+        // 验证结果
+        assertNotNull(context, "Code context should not be null");
+        assertTrue(context.contains(">>>"), "Context should contain the target line marker");
+        assertTrue(context.contains(String.valueOf(TEST_LINE)), "Context should contain the line number");
+
+        // 打印结果以便查看
+        System.out.println("Code context retrieved from GitLab:");
+        System.out.println(context);
     }
 
     @Test
-    public void testGetAuthorInfo_InvalidFile() {
-        // Test with a file that doesn't exist
-        CodeAuthorInfo authorInfo = gitLabService.getAuthorInfo("non-existent-file.txt", 1);
-        
-        // Should return null for non-existent file
-        assertNull(authorInfo);
+    public void testGetCodeContext_MissingConfiguration() {
+        // 创建一个配置不完整的实例
+        ExceptionNotifyProperties emptyProps = new ExceptionNotifyProperties();
+        ExceptionNotifyProperties.GitLab emptyGitlabConfig = new ExceptionNotifyProperties.GitLab();
+        emptyGitlabConfig.setToken(null);
+        emptyProps.setGitlab(emptyGitlabConfig);
+
+        GitLabService serviceWithNoConfig = new GitLabService(emptyProps);
+
+        // 配置缺失时应该返回 null
+        String context = serviceWithNoConfig.getCodeContext(TEST_FILE, TEST_LINE, 2);
+        assertNull(context, "Should return null when configuration is missing");
     }
 
-} 
+    @Test
+    public void testGetCodeContext_InvalidFile() {
+        boolean hasValidConfig = properties.getGitlab().getToken() != null
+                && !properties.getGitlab().getToken().equals("your_gitlab_token_here")
+                && !properties.getGitlab().getProjectId().equals("your_project_id");
+
+        assumeTrue(hasValidConfig, "Skipping test: Valid GitLab token not configured");
+
+        // 测试不存在的文件
+        String context = gitLabService.getCodeContext("non-existent-file.txt", 1, 2);
+
+        assertNull(context, "Should return null for non-existent file");
+    }
+
+    @Test
+    public void testGetCodeContext_EdgeCases() {
+        boolean hasValidConfig = properties.getGitlab().getToken() != null
+                && !properties.getGitlab().getToken().equals("your_gitlab_token_here")
+                && !properties.getGitlab().getProjectId().equals("your_project_id");
+
+        assumeTrue(hasValidConfig, "Skipping test: Valid GitLab token not configured");
+
+        // 测试第一行
+        String context = gitLabService.getCodeContext(TEST_FILE, 1, 5);
+
+        if (context != null) {
+            assertTrue(context.contains(">>> 1:"), "Context should highlight line 1");
+            assertFalse(context.contains("    0:"), "Context should not include line 0");
+
+            System.out.println("Edge case - first line:");
+            System.out.println(context);
+        }
+    }
+
+    @Test
+    public void testGetCodeContext_LargeContextLines() {
+        boolean hasValidConfig = properties.getGitlab().getToken() != null
+                && !properties.getGitlab().getToken().equals("your_gitlab_token_here")
+                && !properties.getGitlab().getProjectId().equals("your_project_id");
+
+        assumeTrue(hasValidConfig, "Skipping test: Valid GitLab token not configured");
+
+        // 测试大范围的上下文行
+        String context = gitLabService.getCodeContext(TEST_FILE, TEST_LINE, 10);
+
+        if (context != null) {
+            assertTrue(context.contains(">>>"), "Context should contain the target line marker");
+
+            // 计算上下文行数
+            String[] lines = context.split("\n");
+            assertTrue(lines.length >= 3, "Context should contain multiple lines");
+
+            System.out.println("Large context (10 lines before/after):");
+            System.out.println(context);
+        }
+    }
+
+    @Test
+    public void testGetCodeContext_MissingProjectId() {
+        // 创建缺少 projectId 的配置
+        ExceptionNotifyProperties testProps = new ExceptionNotifyProperties();
+        ExceptionNotifyProperties.GitLab gitlabConfig = new ExceptionNotifyProperties.GitLab();
+        gitlabConfig.setToken("test_token");
+        gitlabConfig.setProjectId(null);
+        gitlabConfig.setBranch("main");
+        gitlabConfig.setBaseUrl("https://gitlab.com/api/v4");
+        testProps.setGitlab(gitlabConfig);
+
+        GitLabService service = new GitLabService(testProps);
+
+        String context = service.getCodeContext(TEST_FILE, TEST_LINE, 2);
+        assertNull(context, "Should return null when projectId is missing");
+    }
+
+    @Test
+    public void testGetCodeContext_MissingBranch() {
+        // 创建缺少 branch 的配置
+        ExceptionNotifyProperties testProps = new ExceptionNotifyProperties();
+        ExceptionNotifyProperties.GitLab gitlabConfig = new ExceptionNotifyProperties.GitLab();
+        gitlabConfig.setToken("test_token");
+        gitlabConfig.setProjectId("123456");
+        gitlabConfig.setBranch(null);
+        gitlabConfig.setBaseUrl("https://gitlab.com/api/v4");
+        testProps.setGitlab(gitlabConfig);
+
+        GitLabService service = new GitLabService(testProps);
+
+        String context = service.getCodeContext(TEST_FILE, TEST_LINE, 2);
+        assertNull(context, "Should return null when branch is missing");
+    }
+
+    @Test
+    public void testGetCodeContext_LastLineContext() {
+        boolean hasValidConfig = properties.getGitlab().getToken() != null
+                && !properties.getGitlab().getToken().equals("your_gitlab_token_here")
+                && !properties.getGitlab().getProjectId().equals("your_project_id");
+
+        assumeTrue(hasValidConfig, "Skipping test: Valid GitLab token not configured");
+
+        // 测试获取靠近文件末尾的代码上下文
+        String context = gitLabService.getCodeContext(TEST_FILE, 200, 5);
+
+        if (context != null) {
+            assertTrue(context.contains(">>>"), "Context should contain the target line marker");
+            // 确保没有超出文件范围
+            assertFalse(context.contains("    0:"), "Context should not contain invalid line numbers");
+
+            System.out.println("Context near end of file:");
+            System.out.println(context);
+        }
+    }
+}

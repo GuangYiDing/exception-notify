@@ -201,12 +201,20 @@ public class GitHubService extends AbstractGitSourceControlService {
     private String extractCodeContext(String fileContent, int lineNumber, int contextLines) {
         String[] lines = fileContent.split("\n");
 
-        int startLine = Math.max(1, lineNumber - contextLines);
-        int endLine = Math.min(lines.length, lineNumber + contextLines);
+        // Adjust lineNumber if it's out of bounds
+        int actualLineNumber = lineNumber;
+        if (actualLineNumber > lines.length) {
+            actualLineNumber = lines.length;
+        } else if (actualLineNumber < 1) {
+            actualLineNumber = 1;
+        }
+
+        int startLine = Math.max(1, actualLineNumber - contextLines);
+        int endLine = Math.min(lines.length, actualLineNumber + contextLines);
 
         StringBuilder context = new StringBuilder();
         for (int i = startLine; i <= endLine; i++) {
-            String linePrefix = (i == lineNumber) ? ">>> " : "    ";
+            String linePrefix = (i == actualLineNumber) ? ">>> " : "    ";
             context.append(linePrefix)
                    .append(i)
                    .append(": ")

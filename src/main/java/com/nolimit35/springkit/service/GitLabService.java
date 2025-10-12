@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 import org.springframework.stereotype.Service;
 
@@ -171,8 +172,9 @@ public class GitLabService extends AbstractGitSourceControlService {
             String encodedFilePath = URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString());
 
             // Construct GitLab API URL to get file content
+            // Using standard endpoint that returns Base64 encoded content
             String apiUrl = String.format(
-                "%s/projects/%s/repository/files/%s/raw",
+                "%s/projects/%s/repository/files/%s",
                 properties.getGitlab().getBaseUrl(),
                 properties.getGitlab().getProjectId(),
                 encodedFilePath
@@ -193,7 +195,21 @@ public class GitLabService extends AbstractGitSourceControlService {
                     return null;
                 }
 
-                String fileContent = response.body().string();
+                String responseBody = response.body().string();
+                JsonNode contentData = objectMapper.readTree(responseBody);
+
+                // Check if the response contains base64 encoded content
+                JsonNode contentNode = contentData.get("content");
+                if (contentNode == null) {
+                    log.error("No content field found in GitLab response");
+                    return null;
+                }
+
+                // Decode base64 content
+                String base64Content = contentNode.asText().replaceAll("\\s", ""); // Remove whitespace
+                byte[] decodedBytes = Base64.getDecoder().decode(base64Content);
+                String fileContent = new String(decodedBytes, StandardCharsets.UTF_8);
+
                 return extractCodeContext(fileContent, lineNumber, contextLines);
             }
         } catch (IOException e) {
@@ -214,12 +230,20 @@ public class GitLabService extends AbstractGitSourceControlService {
     private String extractCodeContext(String fileContent, int lineNumber, int contextLines) {
         String[] lines = fileContent.split("\n");
 
-        int startLine = Math.max(1, lineNumber - contextLines);
-        int endLine = Math.min(lines.length, lineNumber + contextLines);
+        // Adjust lineNumber if it's out of bounds
+        int actualLineNumber = lineNumber;
+        if (actualLineNumber > lines.length) {
+            actualLineNumber = lines.length;
+        } else if (actualLineNumber < 1) {
+            actualLineNumber = 1;
+        }
+
+        int startLine = Math.max(1, actualLineNumber - contextLines);
+        int endLine = Math.min(lines.length, actualLineNumber + contextLines);
 
         StringBuilder context = new StringBuilder();
         for (int i = startLine; i <= endLine; i++) {
-            String linePrefix = (i == lineNumber) ? ">>> " : "    ";
+            String linePrefix = (i == actualLineNumber) ? ">>> " : "    ";
             context.append(linePrefix)
                    .append(i)
                    .append(": ")
