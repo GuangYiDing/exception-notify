@@ -204,7 +204,7 @@ export default function App() {
     }
   };
 
-  const sendMessage = async (userMessage: string, baseMessages?: ChatMessage[]) => {
+  const sendMessage = async (userMessage: string, baseMessages?: ChatMessage[], skipAddUserMessage = false) => {
     if (!settings.apiKey.trim()) {
       setSendError('请先在设置中填写 API Key。');
       setSettingsOpen(true);
@@ -213,11 +213,15 @@ export default function App() {
 
     setSendError(null);
     const currentMessages = baseMessages || messages;
-    const newMessages: ChatMessage[] = [
-      ...currentMessages,
-      { role: 'user', content: userMessage }
-    ];
-    setMessages(newMessages);
+    const newMessages: ChatMessage[] = skipAddUserMessage
+      ? currentMessages
+      : [
+          ...currentMessages,
+          { role: 'user', content: userMessage }
+        ];
+    if (!skipAddUserMessage) {
+      setMessages(newMessages);
+    }
     setIsSending(true);
     setStreamingContent('');
     setStreamingReasoning('');
@@ -335,6 +339,24 @@ export default function App() {
     await sendMessage(userMessage);
   };
 
+  const handleRegenerate = async (index: number) => {
+    if (isSending) return;
+    
+    // Find the user message before this assistant message
+    const userMessageIndex = index - 1;
+    if (userMessageIndex < 0 || messages[userMessageIndex].role !== 'user') {
+      return;
+    }
+    
+    // Remove the assistant message we want to regenerate
+    const messagesBeforeAssistant = messages.slice(0, index);
+    setMessages(messagesBeforeAssistant);
+    
+    // Resend the user message (don't add it again since it's already in messagesBeforeAssistant)
+    const userMessage = messages[userMessageIndex].content;
+    await sendMessage(userMessage, messagesBeforeAssistant, true);
+  };
+
   const exceptionTitle = useMemo(() => {
     if (!payload) {
       return '异常详情';
@@ -422,7 +444,7 @@ export default function App() {
           <div className="modal-overlay" onClick={() => setSettingsOpen(false)} />
           <dialog className="settings-modal" open>
             <div className="modal-header">
-              <h2>AI 接口设置</h2>
+              <h2>⚙️ AI 接口设置</h2>
               <button
                 type="button"
                 className="modal-close"
@@ -434,6 +456,12 @@ export default function App() {
             <p className="hint">
               API Key 仅保存在当前浏览器 LocalStorage 中。若使用公共环境，请谨慎输入密钥。
             </p>
+            {sendError && sendError.includes('API Key') && (
+              <div className="modal-error-banner">
+                <span className="error-icon">⚠️</span>
+                <span>{sendError}</span>
+              </div>
+            )}
             <form className="settings-form" onSubmit={event => event.preventDefault()}>
               <label className="system-prompt-label">
                 系统提示词
@@ -537,27 +565,27 @@ export default function App() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  查看链路
+                  🔗 查看链路
                 </a>
               )}
             </header>
 
             <div className="card-grid">
-              <InfoRow label="异常类型" value={payload.exceptionType} onCopySuccess={handleCopySuccess} />
-              <InfoRow label="Trace ID" value={payload.traceId} onCopySuccess={handleCopySuccess} />
-              <InfoRow label="异常位置" value={payload.location} onCopySuccess={handleCopySuccess} />
-              <InfoRow label="异常描述" value={payload.exceptionMessage} onCopySuccess={handleCopySuccess} />
+              <InfoRow label="🐛 异常类型" value={payload.exceptionType} onCopySuccess={handleCopySuccess} />
+              <InfoRow label="🔍 Trace ID" value={payload.traceId} onCopySuccess={handleCopySuccess} />
+              <InfoRow label="📍 异常位置" value={payload.location} onCopySuccess={handleCopySuccess} />
+              <InfoRow label="💬 异常描述" value={payload.exceptionMessage} onCopySuccess={handleCopySuccess} />
             </div>
 
             {payload.author && (
               <section className="sub-card">
-                <h3>代码提交者</h3>
+                <h3>👤 代码提交者</h3>
                 <div className="card-grid">
-                  <InfoRow label="姓名" value={payload.author.name} onCopySuccess={handleCopySuccess} />
-                  <InfoRow label="邮箱" value={payload.author.email} onCopySuccess={handleCopySuccess} />
-                  <InfoRow label="最后提交时间" value={formatDate(payload.author.lastCommitTime)} onCopySuccess={handleCopySuccess} />
-                  <InfoRow label="文件位置" value={formatFileLocation(payload.author)} onCopySuccess={handleCopySuccess} />
-                  <InfoRow label="提交信息" value={payload.author.commitMessage} onCopySuccess={handleCopySuccess} />
+                  <InfoRow label="👨‍💻 姓名" value={payload.author.name} onCopySuccess={handleCopySuccess} />
+                  <InfoRow label="📧 邮箱" value={payload.author.email} onCopySuccess={handleCopySuccess} />
+                  <InfoRow label="⏰ 最后提交时间" value={formatDate(payload.author.lastCommitTime)} onCopySuccess={handleCopySuccess} />
+                  <InfoRow label="📁 文件位置" value={formatFileLocation(payload.author)} onCopySuccess={handleCopySuccess} />
+                  <InfoRow label="💡 提交信息" value={payload.author.commitMessage} onCopySuccess={handleCopySuccess} />
                 </div>
               </section>
             )}
@@ -565,7 +593,7 @@ export default function App() {
             {payload.codeContext && (
               <section className="sub-card">
                 <div className="editable-header">
-                  <h3>代码上下文</h3>
+                  <h3>📝 代码上下文</h3>
                   <div className="edit-actions">
                     {editingCodeContext ? (
                       <>
@@ -574,14 +602,14 @@ export default function App() {
                           className="edit-button save"
                           onClick={handleSaveCodeContext}
                         >
-                          保存
+                          ✅ 保存
                         </button>
                         <button
                           type="button"
                           className="edit-button cancel"
                           onClick={handleCancelCodeContext}
                         >
-                          取消
+                          ❌ 取消
                         </button>
                       </>
                     ) : (
@@ -590,7 +618,7 @@ export default function App() {
                         className="edit-button"
                         onClick={handleEditCodeContext}
                       >
-                        编辑
+                        ✏️ 编辑
                       </button>
                     )}
                   </div>
@@ -612,7 +640,7 @@ export default function App() {
             {payload.stacktrace && (
               <section className="sub-card">
                 <div className="editable-header">
-                  <h3>堆栈信息</h3>
+                  <h3>📚 堆栈信息</h3>
                   <div className="edit-actions">
                     {editingStacktrace ? (
                       <>
@@ -621,14 +649,14 @@ export default function App() {
                           className="edit-button save"
                           onClick={handleSaveStacktrace}
                         >
-                          保存
+                          ✅ 保存
                         </button>
                         <button
                           type="button"
                           className="edit-button cancel"
                           onClick={handleCancelStacktrace}
                         >
-                          取消
+                          ❌ 取消
                         </button>
                       </>
                     ) : (
@@ -637,7 +665,7 @@ export default function App() {
                         className="edit-button"
                         onClick={handleEditStacktrace}
                       >
-                        编辑
+                        ✏️ 编辑
                       </button>
                     )}
                   </div>
@@ -658,7 +686,7 @@ export default function App() {
 
             <section className="sub-card">
               <div className="editable-header">
-                <h3>其他补充</h3>
+                <h3>📌 其他补充</h3>
                 <div className="edit-actions">
                   {editingAdditionalInfo ? (
                     <>
@@ -667,14 +695,14 @@ export default function App() {
                         className="edit-button save"
                         onClick={handleSaveAdditionalInfo}
                       >
-                        保存
+                        ✅ 保存
                       </button>
                       <button
                         type="button"
                         className="edit-button cancel"
                         onClick={handleCancelAdditionalInfo}
                       >
-                        取消
+                        ❌ 取消
                       </button>
                     </>
                   ) : (
@@ -683,7 +711,7 @@ export default function App() {
                       className="edit-button"
                       onClick={handleEditAdditionalInfo}
                     >
-                      {payload?.additionalInfo ? '编辑' : '添加'}
+                      {payload?.additionalInfo ? '✏️ 编辑' : '➕ 添加'}
                     </button>
                   )}
                 </div>
@@ -711,13 +739,13 @@ export default function App() {
         <section className="card chat-panel">
           <header className="card-header">
             <div>
-              <h2>对话分析</h2>
+              <h2>💬 对话分析</h2>
               <p className="hint">
                 根据异常上下文向 AI 提问，获取进一步的定位与修复建议。
               </p>
             </div>
             <button className="settings-button" onClick={() => setSettingsOpen(v => !v)}>
-              {settingsOpen ? '关闭设置' : '打开设置'}
+              {settingsOpen ? '❌ 关闭设置' : '⚙️ 打开设置'}
             </button>
           </header>
           <div className="chat-window" ref={chatWindowRef}>
@@ -745,15 +773,25 @@ export default function App() {
                         onClick={() => copyToClipboard(message.content, index)}
                         title="复制内容"
                       >
-                        {copiedIndex === index ? '✓' : '📋'}
+                        {copiedIndex === index ? '✅ 已复制' : '📋 复制'}
                       </button>
+                      {message.role === 'assistant' && !isSending && (
+                        <button
+                          type="button"
+                          className="regenerate-button"
+                          onClick={() => handleRegenerate(index)}
+                          title="重新生成回答"
+                        >
+                          🔄 重新生成
+                        </button>
+                      )}
                       {collapsible && (
                         <button
                           type="button"
                           className="collapse-button"
                           onClick={() => toggleCollapsed(index, collapsed)}
                         >
-                          {collapsed ? '展开' : '收起'}
+                          {collapsed ? '📂 展开' : '📁 收起'}
                         </button>
                       )}
                     </div>
@@ -810,7 +848,7 @@ export default function App() {
             {(streamingContent || streamingReasoning) && (
               <article className="chat-message assistant streaming">
                 <div className="message-header">
-                  <span className="role-label">AI</span>
+                  <span className="role-label">🤖 AI</span>
                   <span className="streaming-indicator">正在生成...</span>
                 </div>
                 {streamingReasoning && (
@@ -865,7 +903,7 @@ export default function App() {
                 }}
               />
               <button type="submit" disabled={isSending} className="send-button">
-                {isSending ? '发送中...' : '发送'}
+                {isSending ? '🔄 发送中...' : '🚀 发送'}
               </button>
             </div>
           </form>
@@ -1009,11 +1047,11 @@ function formatFileLocation(author?: AiAnalysisPayload['author']): string | unde
 function roleLabel(role: ChatMessage['role']): string {
   switch (role) {
     case 'assistant':
-      return 'AI';
+      return '🤖 AI';
     case 'user':
-      return '你';
+      return '👤 你';
     case 'system':
-      return '系统';
+      return '⚙️ 系统';
     default:
       return role;
   }

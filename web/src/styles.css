@@ -154,6 +154,53 @@ pre {
   }
 }
 
+/* Modal error banner */
+.modal-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.35), rgba(239, 68, 68, 0.3));
+  border: 2px solid rgba(248, 113, 113, 0.8);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(248, 113, 113, 0.5), 0 2px 8px rgba(239, 68, 68, 0.4);
+  animation: errorShake 0.5s ease-in-out;
+  margin-top: 8px;
+}
+
+.modal-error-banner .error-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  animation: errorIconPulse 1s ease-in-out infinite;
+}
+
+@keyframes errorShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-6px);
+  }
+}
+
+@keyframes errorIconPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
 .hint {
   margin: 0;
   color: #94a3b8;
@@ -218,13 +265,53 @@ pre {
 }
 
 .error-banner {
-  padding: 12px 18px;
+  padding: 16px 20px;
   border-radius: 16px;
-  background: rgba(248, 113, 113, 0.2);
-  border: 1px solid rgba(248, 113, 113, 0.45);
-  color: #fecaca;
-  font-size: 14px;
-  margin-bottom: 24px;
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.3), rgba(239, 68, 68, 0.25));
+  border: 1.5px solid rgba(248, 113, 113, 0.7);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  margin-top: 12px;
+  box-shadow: 0 4px 16px rgba(248, 113, 113, 0.4), 0 2px 8px rgba(239, 68, 68, 0.3);
+  animation: errorPulse 0.4s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.error-banner::before {
+  content: '⚠️';
+  font-size: 18px;
+  margin-right: 12px;
+  display: inline-block;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes errorPulse {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
 }
 
 .welcome-card {
@@ -637,18 +724,40 @@ pre {
   border: none;
   background: rgba(148, 163, 184, 0.15);
   color: #cbd5f5;
-  font-size: 14px;
-  padding: 4px 8px;
+  font-size: 13px;
+  padding: 5px 10px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  line-height: 1;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-weight: 500;
 }
 
 .copy-button:hover {
   background: rgba(34, 211, 238, 0.25);
   color: #7dd3fc;
-  transform: scale(1.1);
+  transform: translateY(-1px);
+}
+
+.regenerate-button {
+  border: none;
+  background: rgba(167, 139, 250, 0.15);
+  color: #c4b5fd;
+  font-size: 13px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.regenerate-button:hover {
+  background: rgba(167, 139, 250, 0.3);
+  color: #ddd6fe;
+  transform: translateY(-1px);
 }
 
 .collapse-button {
