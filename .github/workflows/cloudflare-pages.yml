@@ -43,11 +43,11 @@ jobs:
           # ✅ 在部署前检查项目是否存在
           preCommands: |
             echo "⚙️ Checking Cloudflare Pages project existence..."
-            if ! wrangler pages project list | grep -q "exception-notify-workspace"; then
+            if wrangler pages project list | grep -q "exception-notify-workspace"; then
+              echo "✅ Project 'exception-notify-workspace' already exists."
+            else
               echo "🚀 Creating Cloudflare Pages project..."
               wrangler pages project create exception-notify-workspace
-            else
-              echo "✅ Project 'exception-notify-workspace' already exists."
             fi
 
           # ✅ 实际部署命令
