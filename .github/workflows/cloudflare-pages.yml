@@ -34,6 +34,14 @@ jobs:
           cd web
           npm run build
 
+      - name: Ensure Cloudflare Project Exists
+        uses: cloudflare/wrangler-action@v3
+        run: |
+          npx wrangler pages project list
+          if ! npx wrangler pages project list | grep -q "exception-notify-workspace"; then
+            npx wrangler pages project create exception-notify-workspace
+          fi    
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
