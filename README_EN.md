@@ -14,7 +14,7 @@ Exception-Notify is a Spring Boot Starter component designed to capture unhandle
 - 🎯 Basing on `@AfterThrowing` to automatically capture unhandled exceptions in Spring Boot applications
 - 🔍 Stack trace analysis to precisely locate exception source (file name and line number)
 - 👤 Retrieval of code committer information via GitHub API, GitLab API or Gitee API's Git Blame feature
-- 🤖 **AI-powered intelligent exception analysis with repair suggestions (integrated with GPT and other AI models)**
+- 🤖 Generate AI analysis links for rich troubleshooting via an external workspace
 - 🔗 Integration with distributed tracing systems to correlate TraceID
 - 📢 Support for real-time exception alerts via DingTalk robot, Feishu robot and WeChat Work robot
 - ☁️ Support for Tencent Cloud Log Service (CLS) trace linking
@@ -87,18 +87,13 @@ exception:
     trace:
       enabled: true                                                  # Enable trace linking
       header-name: X-Trace-Id                                        # Trace ID request header name
-    # AI intelligent suggestion configuration (optional)
+    # AI analysis link configuration (optional)
     ai:
-      enabled: false                                                 # Enable AI suggestion feature
-      provider: openai                                               # AI service provider
-      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx                       # OpenAI API Key
-      api-url: https://api.openai.com/v1/chat/completions            # OpenAI API endpoint
-      model: gpt-3.5-turbo                                           # Model to use
-      max-tokens: 500                                                # Maximum tokens for AI response
-      temperature: 0.7                                               # Randomness of response (0.0-2.0)
-      timeout: 30                                                    # Request timeout in seconds
+      enabled: true                                                  # Enable AI analysis link
       include-code-context: true                                     # Include code context
-      code-context-lines: 5                                          # Number of code context lines
+      code-context-lines: 5                                          # Number of context lines to capture
+      analysis-page-url: http://localhost:5173                       # AI workspace URL
+      payload-param: payload                                         # Query parameter name for the compressed payload
     package-filter:
       enabled: false                                                 # Enable package name filtering
       include-packages:                                              # List of packages to include in analysis
@@ -148,15 +143,11 @@ Last Commit Time: 2023-03-15 10:23:18
 TraceID: 7b2d1e8f9c3a5b4d6e8f9c3a5b4d6e8f
 Cloud Log Link: https://console.cloud.tencent.com/cls/search?region=ap-guangzhou&topic_id=xxx-xxx-xxx&interactiveQueryBase64=xxxx
 -------------------------------
-### AI Suggestion:
+### AI Analysis:
 
-**Root Cause Analysis:**
-The exception is caused by attempting to invoke a method on a null object, resulting in a NullPointerException. From the stack trace, the str variable is null at line 42 in UserService.processData.
+[Open AI Analysis](https://ai.example.com/analysis?payload=xxxxxx)
 
-**Recommended Fixes:**
-1. Add null check before calling str.length(): if (str != null)
-2. Consider using Optional<String> for safer handling of potentially null strings
-3. Check the upstream call chain to ensure str parameter is not null when passed in
+(The link carries the compressed exception context so you can inspect details and continue the conversation inside the workspace.)
 
 -------------------------------
 Stack Trace:
@@ -168,7 +159,7 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
 mention: @John Doe
 ```
 
-> **Note**: AI suggestion section will only be displayed when AI feature is enabled.
+> **Note**: The AI analysis link appears only when `exception.notify.ai.enabled` is `true` and `analysis-page-url` is configured.
 
 ## ⚙️ Advanced Configuration
 
@@ -217,6 +208,24 @@ Configuration details:
 - In high-concurrency scenarios, the same issue may trigger many exceptions in a short time, avoiding alert bombardment
 - When scheduled tasks fail, avoid sending duplicate alerts on every execution
 - The time window can be adjusted according to actual needs, such as 5 or 10 minutes
+
+### 🧠 AI Analysis Workspace
+
+Exception-Notify compresses exception details and code context into a Base64URL + GZIP string and appends it to the configured `analysis-page-url`. The project ships a sample Vite + React workspace under the repository root (`web/`) which decodes the payload in the browser and allows interactive conversations with your AI provider:
+
+1. Start local development:
+   ```bash
+   cd web
+   npm install
+   npm run dev
+   ```
+2. Build for production:
+   ```bash
+   npm run build
+   ```
+3. Point `analysis-page-url` to the hosted workspace (self-hosted server or static hosting).
+4. The workspace stores API keys and model details in the browser's LocalStorage by default; switch to your internal proxy service if required.
+5. If you rename the query parameter, keep `exception.notify.ai.payload-param` consistent between backend and frontend.
 
 ### 📦 Package Filter Configuration
 
@@ -338,63 +347,41 @@ When the @ mention feature is enabled, the system will identify the responsible 
 
 ### 🤖 AI Intelligent Suggestion Configuration
 
-Exception-Notify supports integrating AI models (such as GPT) to intelligently analyze exceptions and provide repair suggestions. AI will provide concise analysis and repair suggestions based on exception type, stack information, and code context.
+Exception-Notify can bundle stack traces, code context, trace identifiers, and author information into a compressed payload that is appended to an external AI workspace URL. The workspace (for example the sample app under `web/`) can then decode the payload, render the details, and let you drive the conversation with your preferred AI provider.
 
 ```yaml
 exception:
   notify:
     ai:
-      enabled: true                                          # Enable AI suggestion feature
-      provider: openai                                       # AI service provider (currently supports openai)
-      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx               # OpenAI API Key
-      api-url: https://api.openai.com/v1/chat/completions    # OpenAI API endpoint (can be customized for compatible services)
-      model: gpt-3.5-turbo                                   # Model to use (gpt-3.5-turbo, gpt-4, etc.)
-      max-tokens: 500                                        # Maximum tokens for AI response
-      temperature: 0.7                                       # Randomness of response (0.0-2.0, lower is more deterministic)
-      timeout: 30                                            # Request timeout in seconds
-      include-code-context: true                             # Include code context
-      code-context-lines: 5                                  # Number of code context lines (before and after exception location)
+      enabled: true                                          # Enable AI analysis link
+      include-code-context: true                             # Capture code context around the failure
+      code-context-lines: 5                                  # Number of lines before/after the target line
+      analysis-page-url: https://ai.example.com/analysis     # Hosted AI workspace URL
+      payload-param: payload                                 # Query parameter that carries the compressed payload
 ```
 
 **Configuration Details**:
 
-1. **enabled**: Enable AI suggestion feature, default is `false`
-2. **provider**: AI service provider, currently supports `openai` (compatible with OpenAI API services)
-3. **api-key**: OpenAI API Key, obtain from OpenAI official website
-4. **api-url**: API endpoint, defaults to OpenAI official address, can also be configured for services compatible with OpenAI API (such as Azure OpenAI)
-5. **model**: AI model to use, recommended `gpt-3.5-turbo` (cost-effective) or `gpt-4` (more accurate)
-6. **max-tokens**: Maximum tokens for AI response, default 500
-7. **temperature**: Controls randomness of response, lower values produce more deterministic output, default 0.7
-8. **timeout**: Request timeout, default 30 seconds
-9. **include-code-context**: Include code context around exception location when analyzing, default is `true`
-10. **code-context-lines**: Number of code context lines, i.e., how many lines before and after exception location to include, default 5 lines
-
-**AI Suggestion Example**:
-
-When AI suggestion feature is enabled, exception alert messages will include an AI suggestion section similar to the following:
-
-```
--------------------------------
-### AI Suggestion:
-
-**Root Cause Analysis:**
-The exception is caused by attempting to invoke a method on a null object, resulting in a NullPointerException. From the stack trace, the str variable is null at line 42 in UserService.processData.
-
-**Recommended Fixes:**
-1. Add null check before calling str.length(): if (str != null)
-2. Consider using Optional<String> for safer handling of potentially null strings
-3. Check the upstream call chain to ensure str parameter is not null when passed in
--------------------------------
-```
+1. **enabled**: Turns on payload generation and the AI analysis link block.
+2. **include-code-context**: Captures surrounding source code when repository integrations can provide it.
+3. **code-context-lines**: Controls how many lines before and after the error line are included.
+4. **analysis-page-url**: Where the notification should point users for deep-dive analysis; typically a self-hosted web workspace.
+5. **payload-param**: Query parameter name expected by the workspace; defaults to `payload` and must stay in sync with the frontend.
 
 **Important Notes**:
 
-- AI suggestion feature requires access to external AI services, ensure network connectivity is available
-- Using OpenAI API incurs costs, please configure `max-tokens` and usage frequency appropriately
-- Code context requires Git code hosting platform (GitHub/GitLab/Gitee) configuration to retrieve
-- AI suggestions are not guaranteed to be 100% accurate and are for reference only; actual fixes need to consider specific business logic
-- If AI service call fails, it will not affect normal exception notification delivery
+- The backend no longer calls external AI providers directly; conversations happen inside the workspace.
+- Payloads are encoded with Base64URL + GZIP. The sample workspace demonstrates how to decode them client-side.
+- Users provide their API credentials within the workspace UI (stored locally by default). Consider proxying through an internal service if stricter control is required.
+- If workspace configuration is incomplete, the notification will omit the AI analysis link but still deliver the rest of the alert normally.
 
+
+**Workspace Features**:
+
+- 📡 **Streaming Response**: AI responses use Server-Sent Events (SSE) for real-time streaming display
+- 📝 **Markdown Rendering**: Full Markdown syntax support including headings, lists, code blocks, etc.
+- 🎨 **Code Highlighting**: Syntax highlighting based on highlight.js, supporting multiple programming languages
+- 💬 **Interactive Dialogue**: Supports multi-turn conversations for in-depth exception analysis
 ### 🔧 Custom Exception Filtering
 
 You can customize which exceptions should trigger alerts by implementing the `ExceptionFilter` interface and registering it as a Spring Bean:

@@ -83,11 +83,11 @@ public class DefaultNotificationFormatter implements NotificationFormatter {
             }
         }
 
-        // Format AI suggestion if available
-        if (exceptionInfo.getAiSuggestion() != null && !exceptionInfo.getAiSuggestion().isEmpty()) {
+        // Format AI analysis link if available
+        if (exceptionInfo.getAiAnalysisUrl() != null && !exceptionInfo.getAiAnalysisUrl().isEmpty()) {
             sb.append("---\n\n");
-            sb.append("### AI 建议：\n\n");
-            sb.append(exceptionInfo.getAiSuggestion()).append("\n\n");
+            sb.append("### AI 分析：\n\n");
+            sb.append("[点击 AI 分析](").append(exceptionInfo.getAiAnalysisUrl()).append(")\n\n");
         }
 
         sb.append("---\n\n");

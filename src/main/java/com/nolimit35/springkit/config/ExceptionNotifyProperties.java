@@ -437,5 +437,15 @@ public class ExceptionNotifyProperties {
          * Number of lines of code context to include (before and after the error line)
          */
         private int codeContextLines = 5;
+
+        /**
+         * URL of the AI analysis web page that will receive the compressed payload
+         */
+        private String analysisPageUrl;
+
+        /**
+         * Query parameter name used to pass the compressed payload to the analysis page
+         */
+        private String payloadParam = "payload";
     }
-} 
+}

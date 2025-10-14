@@ -1,6 +1,7 @@
 package com.nolimit35.springkit.service;
 
 import com.nolimit35.springkit.config.ExceptionNotifyProperties;
+import com.nolimit35.springkit.model.AiAnalysisPayload;
 import com.nolimit35.springkit.model.CodeAuthorInfo;
 import com.nolimit35.springkit.model.ExceptionInfo;
 import com.nolimit35.springkit.trace.TraceInfoProvider;
@@ -10,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -21,12 +23,14 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class ExceptionAnalyzerService {
+    private static final DateTimeFormatter ISO_DATE_TIME = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
     private final List<GitSourceControlService> gitSourceControlServices;
     private final ExceptionNotifyProperties properties;
     private final TraceInfoProvider traceInfoProvider;
 
     @Autowired(required = false)
-    private AiSuggestionService aiSuggestionService;
+    private AiAnalysisLinkService aiAnalysisLinkService;
 
     @Value("${spring.application.name:unknown}")
     private String applicationName;
@@ -47,6 +51,8 @@ public class ExceptionAnalyzerService {
      * @return exception information
      */
     public ExceptionInfo analyzeException(Throwable throwable, String traceId) {
+        LocalDateTime occurrenceTime = LocalDateTime.now();
+
         // Get exception details
         String exceptionType = throwable.getClass().getName();
         String message = throwable.getMessage();
@@ -78,35 +84,61 @@ public class ExceptionAnalyzerService {
             traceUrl = traceInfoProvider.generateTraceUrl(traceId);
         }
 
-        // Get AI suggestion if enabled
-        String aiSuggestion = null;
-        if (properties.getAi().isEnabled() && aiSuggestionService != null && aiSuggestionService.isAvailable()) {
+        // Capture code context if configured
+        String codeContext = null;
+        if (properties.getAi().isEnabled()
+                && properties.getAi().isIncludeCodeContext()
+                && firstAppElement != null) {
+            String fileName = convertClassNameToFilePath(firstAppElement.getClassName()) + ".java";
+            int contextLines = properties.getAi().getCodeContextLines();
+            codeContext = getCodeContext(fileName, firstAppElement.getLineNumber(), contextLines);
+        }
+
+        // Build AI analysis link if enabled
+        String aiAnalysisUrl = null;
+        if (properties.getAi().isEnabled() && aiAnalysisLinkService != null && aiAnalysisLinkService.isAvailable()) {
             try {
-                // Get code context if available
-                String codeContext = null;
-                if (properties.getAi().isIncludeCodeContext() && firstAppElement != null) {
-                    String fileName = convertClassNameToFilePath(firstAppElement.getClassName()) + ".java";
-                    int contextLines = properties.getAi().getCodeContextLines();
-                    codeContext = getCodeContext(fileName, firstAppElement.getLineNumber(), contextLines);
+                AiAnalysisPayload.AiAnalysisPayloadBuilder payloadBuilder = AiAnalysisPayload.builder()
+                        .appName(applicationName)
+                        .environment(properties.getEnvironment().getCurrent())
+                        .occurrenceTime(occurrenceTime.format(ISO_DATE_TIME))
+                        .exceptionType(exceptionType)
+                        .exceptionMessage(message != null ? message : "No message")
+                        .location(location)
+                        .stacktrace(stacktrace)
+                        .traceId(traceId)
+                        .traceUrl(traceUrl);
+
+                if (codeContext != null && !codeContext.isEmpty()) {
+                    payloadBuilder.codeContext(codeContext);
                 }
 
-                // Get AI suggestion
-                aiSuggestion = aiSuggestionService.getSuggestion(
-                    exceptionType,
-                    message,
-                    stacktrace,
-                    codeContext
-                );
+                if (authorInfo != null) {
+                    payloadBuilder.author(AiAnalysisPayload.Author.builder()
+                            .name(authorInfo.getName())
+                            .email(authorInfo.getEmail())
+                            .lastCommitTime(authorInfo.getLastCommitTime() != null
+                                    ? authorInfo.getLastCommitTime().format(ISO_DATE_TIME)
+                                    : null)
+                            .fileName(authorInfo.getFileName())
+                            .lineNumber(authorInfo.getLineNumber())
+                            .commitMessage(authorInfo.getCommitMessage())
+                            .build());
+                }
+
+                aiAnalysisUrl = aiAnalysisLinkService.buildAnalysisLink(payloadBuilder.build());
             } catch (Exception e) {
-                log.error("Error getting AI suggestion", e);
+                log.error("Error building AI analysis link", e);
             }
         }
 
+        String formattedMessage = message != null ? message : "No message";
+
         // Build exception info
         return ExceptionInfo.builder()
-                .time(LocalDateTime.now())
+                .time(occurrenceTime)
                 .type(exceptionType)
-                .message(message != null ? message : "No message")
+                .message(formattedMessage)
                 .location(location)
                 .stacktrace(stacktrace)
                 .traceId(traceId)
@@ -114,7 +146,7 @@ public class ExceptionAnalyzerService {
                 .environment(properties.getEnvironment().getCurrent())
                 .authorInfo(authorInfo)
                 .traceUrl(traceUrl)
-                .aiSuggestion(aiSuggestion)
+                .aiAnalysisUrl(aiAnalysisUrl)
                 .build();
     }
 

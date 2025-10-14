@@ -62,7 +62,7 @@ public class ExceptionInfo {
     private String traceUrl;
 
     /**
-     * AI suggestion for the exception
+     * AI analysis web link for further investigation
      */
-    private String aiSuggestion;
-} 
+    private String aiAnalysisUrl;
+}

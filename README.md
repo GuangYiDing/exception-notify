@@ -14,7 +14,7 @@ Exception-Notify 是一个 Spring Boot Starter 组件，用于捕获 Spring Boot
 - 🎯 基于 @AfterThrowing 自动捕获 Spring Boot 应用中未处理的异常
 - 🔍 分析异常堆栈，精确定位异常源码位置（文件名和行号）
 - 👤 通过 GitHub API、GitLab API 或 Gitee API 的 Git Blame 功能获取代码提交者信息
-- 🤖 **支持 AI 智能分析异常，提供修复建议（集成 GPT 等 AI 模型）**
+- 🤖 支持生成 AI 分析链接，结合外部工作台快捷获取修复建议
 - 🔗 支持与分布式链路追踪系统集成，关联 TraceID
 - 📢 支持通过钉钉机器人、飞书机器人和企业微信机器人实时推送异常告警
 - ☁️ 支持腾讯云日志服务(CLS)的链路追踪
@@ -87,18 +87,12 @@ exception:
     trace:
       enabled: true                                                  # 是否启用链路追踪
       header-name: X-Trace-Id                                        # 链路追踪 ID 的请求头名称
-    # AI 智能建议配置（可选）
     ai:
-      enabled: false                                                 # 是否启用 AI 建议功能
-      provider: openai                                               # AI 服务提供商
-      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx                       # OpenAI API Key
-      api-url: https://api.openai.com/v1/chat/completions            # OpenAI API 地址
-      model: gpt-3.5-turbo                                           # 使用的模型
-      max-tokens: 500                                                # AI 响应的最大 token 数
-      temperature: 0.7                                               # 响应的随机性（0.0-2.0）
-      timeout: 30                                                    # 请求超时时间（秒）
-      include-code-context: true                                     # 是否包含代码上下文
-      code-context-lines: 5                                          # 代码上下文的行数
+      enabled: true                                                  # 是否启用 AI 分析链接
+      include-code-context: true                                     # 是否采集代码上下文
+      code-context-lines: 5                                          # 代码上下文行数
+      analysis-page-url: http://localhost:5173                       # AI 分析工作台地址
+      payload-param: payload                                         # 压缩数据查询参数名称
     package-filter:
       enabled: false                                                 # 是否启用包名过滤
       include-packages:                                              # 需要解析的包名列表
@@ -148,15 +142,11 @@ spring:
 TraceID：7b2d1e8f9c3a5b4d6e8f9c3a5b4d6e8f
 云日志链路：https://console.cloud.tencent.com/cls/search?region=ap-guangzhou&topic_id=xxx-xxx-xxx&interactiveQueryBase64=xxxx
 -------------------------------
-### AI 建议：
+### AI 分析：
 
-**异常原因分析：**
-该异常是由于尝试在 null 对象上调用方法导致的空指针异常。从堆栈信息可以看出，在 UserService.processData 方法的第 42 行，str 变量为 null。
+[点击 AI 分析](https://ai.example.com/analysis?payload=xxxxxx)
 
-**修复建议：**
-1. 在调用 str.length() 之前，添加空值检查：if (str != null)
-2. 考虑使用 Optional<String> 来更安全地处理可能为空的字符串
-3. 检查上游调用链，确保 str 参数在传入时不为 null
+（链接会携带压缩后的异常上下文，可在工作台查看详情并继续与 AI 对话）
 
 -------------------------------
 堆栈信息：
@@ -168,7 +158,7 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
 处理人: @张三
 ```
 
-> **注意**：AI 建议部分需要启用 AI 功能才会显示。
+> **注意**：AI 分析链接需要启用 `exception.notify.ai.enabled`，并配置可访问的 `analysis-page-url`。
 
 ## ⚙️ 高级配置
 
@@ -216,6 +206,24 @@ exception:
 
 - 高并发场景下，同一个问题可能在短时间内触发大量异常，避免告警轰炸
 - 定时任务失败时，避免每次执行都发送重复告警
+
+### 🧠 AI 分析工作台
+
+组件会将异常信息、代码上下文等内容压缩为 Base64URL + GZIP 字符串，并拼接到 `analysis-page-url` 的查询参数中。仓库根目录提供了一个基于 Vite + React 的示例 Web 项目（`web/`），用于在浏览器侧解析数据并与 AI 服务交互：
+
+1. 安装依赖并启动本地调试：
+   ```bash
+   cd web
+   npm install
+   npm run dev
+   ```
+2. 生产环境构建：
+   ```bash
+   npm run build
+   ```
+3. 将 `analysis-page-url` 指向部署后的地址（例如自有服务器或静态托管平台）。
+4. Web 工作台会提示用户在本地浏览器输入 API Key 与模型信息，所有敏感配置仅保存在浏览器 LocalStorage 中，可根据需要替换为企业内部的中转服务。
+5. 如果需要自定义查询参数名称，可通过 `exception.notify.ai.payload-param` 配置保持前后端一致。
 - 可以根据实际需求调整时间窗口，比如设置为 5 分钟或 10 分钟
 
 ### 📦 包名过滤配置
@@ -336,65 +344,43 @@ exception:
 
 启用@功能后，当异常发生时，系统会根据Git提交信息找到对应的责任人，并在告警消息中@相关人员，提高异常处理的及时性和准确性。
 
-### 🤖 AI 智能建议配置
+### 🤖 AI 分析链接配置
 
-Exception-Notify 支持集成 AI 模型（如 GPT）来智能分析异常，并提供修复建议。AI 会根据异常类型、堆栈信息和代码上下文给出简洁的分析和修复建议。
+Exception-Notify 会将堆栈信息、代码上下文、Trace ID、提交人等数据压缩后拼接到指定的 AI 分析页面。通过自建的 Web 工作台（仓库自带示例项目 `web/`），即可在浏览器端解压并与 AI 服务进行对话。
 
 ```yaml
 exception:
   notify:
     ai:
-      enabled: true                                          # 是否启用 AI 建议功能
-      provider: openai                                       # AI 服务提供商（目前支持 openai）
-      api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx               # OpenAI API Key
-      api-url: https://api.openai.com/v1/chat/completions    # OpenAI API 地址（可自定义为兼容的服务）
-      model: gpt-3.5-turbo                                   # 使用的模型（gpt-3.5-turbo、gpt-4 等）
-      max-tokens: 500                                        # AI 响应的最大 token 数
-      temperature: 0.7                                       # 响应的随机性（0.0-2.0，越低越确定）
-      timeout: 30                                            # 请求超时时间（秒）
-      include-code-context: true                             # 是否包含代码上下文
-      code-context-lines: 5                                  # 代码上下文的行数（异常位置前后各几行）
+      enabled: true                                          # 是否启用 AI 分析链接
+      include-code-context: true                             # 是否采集异常位置的代码上下文
+      code-context-lines: 5                                  # 异常行上下文的前后行数
+      analysis-page-url: https://ai.example.com/analysis     # AI 工作台地址
+      payload-param: payload                                 # 承载压缩数据的查询参数名称
 ```
 
 **配置说明**：
 
-1. **enabled**: 是否启用 AI 建议功能，默认为 `false`
-2. **provider**: AI 服务提供商，目前支持 `openai`（兼容 OpenAI API 的服务）
-3. **api-key**: OpenAI API Key，需要从 OpenAI 官网获取
-4. **api-url**: API 地址，默认为 OpenAI 官方地址，也可以配置为兼容 OpenAI API 的服务（如 Azure OpenAI）
-5. **model**: 使用的 AI 模型，推荐使用 `gpt-3.5-turbo`（性价比高）或 `gpt-4`（更准确）
-6. **max-tokens**: AI 响应的最大 token 数，默认 500
-7. **temperature**: 控制响应的随机性，值越低输出越确定，默认 0.7
-8. **timeout**: 请求超时时间，默认 30 秒
-9. **include-code-context**: 是否在 AI 分析时包含异常位置的代码上下文，默认为 `true`
-10. **code-context-lines**: 代码上下文的行数，即异常位置前后各包含几行代码，默认 5 行
-
-**AI 建议示例**：
-
-当启用 AI 建议功能后，异常告警消息中会包含类似以下的 AI 建议部分：
-
-```
--------------------------------
-### AI 建议：
-
-**异常原因分析：**
-该异常是由于尝试在 null 对象上调用方法导致的空指针异常。从堆栈信息可以看出，在 UserService.processData 方法的第 42 行，str 变量为 null。
-
-**修复建议：**
-1. 在调用 str.length() 之前，添加空值检查：if (str != null)
-2. 考虑使用 Optional<String> 来更安全地处理可能为空的字符串
-3. 检查上游调用链，确保 str 参数在传入时不为 null
--------------------------------
-```
+1. **enabled**：开启后，通知中会携带 AI 分析链接并生成压缩负载。
+2. **include-code-context**：当成功获取代码上下文时一并压缩进负载。
+3. **code-context-lines**：控制采集的上下文行数。
+4. **analysis-page-url**：指向已部署的分析工作台页面（可自建或使用示例项目）。
+5. **payload-param**：工作台解析查询参数的名称，需与前端保持一致。
 
 **注意事项**：
 
-- AI 建议功能需要访问外部 AI 服务，请确保网络连接正常
-- 使用 OpenAI API 会产生费用，请合理配置 `max-tokens` 和使用频率
-- 代码上下文需要配置 Git 代码托管平台（GitHub/GitLab/Gitee）才能获取
-- AI 建议不保证 100% 准确，仅供参考，实际修复时需要结合具体业务逻辑
-- 如果 AI 服务调用失败，不会影响异常通知的正常发送
+- 后端不再直接调用外部 AI 接口，所有对话在工作台中进行。
+- 负载采用 Base64URL + GZIP 编码，示例工作台提供了解码实现，可按需扩展。
+- 用户在工作台中输入的 API Key 默认只保存在浏览器 LocalStorage，如需集中管理可改为企业内代理服务。
+- 若配置不完整（例如缺少工作台地址），通知会自动省略 AI 分析链接，但不会影响其他信息的发送。
 
+
+**工作台特性**：
+
+- 📡 **流式响应**：AI 回答采用 Server-Sent Events (SSE) 流式展示，实时显示生成内容
+- 📝 **Markdown 渲染**：支持完整的 Markdown 语法，包括标题、列表、代码块等
+- 🎨 **代码高亮**：基于 highlight.js 的语法高亮，支持多种编程语言
+- 💬 **对话式交互**：支持多轮对话，可针对异常继续追问和深入分析
 ### 🔧 自定义异常过滤
 
 你可以通过实现 `ExceptionFilter` 接口并注册为 Spring Bean 来自定义哪些异常需要告警：
