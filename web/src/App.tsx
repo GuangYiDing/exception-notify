@@ -62,7 +62,7 @@ export default function App() {
   const [payload, setPayload] = useState<AiAnalysisPayload | null>(null);
   const [payloadError, setPayloadError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('根据以上信息,分析解决这个问题');
+  const [input, setInput] = useState('根据以上信息,深入分析解决这个问题');
   const [isSending, setIsSending] = useState(false);
   const [collapsedMessages, setCollapsedMessages] = useState<Record<number, boolean>>({});
   const [settings, setSettings] = useState<ClientSettings>(() => {
@@ -416,11 +416,6 @@ export default function App() {
           <span className="toast-text">已复制到剪贴板</span>
         </div>
       )}
-      
-      <header className="app-header">
-        <h1>异常 AI 分析工作台</h1>
-        <p>基于异常上下文快速梳理问题并联动对话式分析。</p>
-      </header>
 
       {settingsOpen && (
         <>
@@ -522,6 +517,9 @@ export default function App() {
               <span className="demo-icon">🚀</span>
               <span>体验示例</span>
             </button>
+            <p className="welcome-subtitle">
+              基于异常上下文快速梳理问题并联动对话式分析。
+            </p>
           </section>
         ) : payload ? (
           <section className="card">
@@ -726,9 +724,9 @@ export default function App() {
             {messages.map((message, index) => {
               const collapsible = isCollapsibleMessage(message);
               const collapsed =
-                collapsible && collapsedMessages[index] !== undefined
+                collapsedMessages[index] !== undefined
                   ? collapsedMessages[index]
-                  : collapsible;
+                  : (message.role === 'system' ? true : collapsible);
               const preview = collapsible ? buildPreview(message.content) : null;
 
               return (
