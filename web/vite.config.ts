@@ -10,5 +10,16 @@ export default defineConfig({
   preview: {
     port: 4173,
     host: true
+  },
+  esbuild: {
+    minify: false
+  },
+  build: {
+    minify: false,
+    rollupOptions: {
+      output: {
+        compact: false
+      }
+    }
   }
 });

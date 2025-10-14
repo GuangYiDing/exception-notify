@@ -462,6 +462,8 @@ export default function App() {
             </div>
             <p className="hint">
               API Key 仅保存在当前浏览器 LocalStorage 中。若使用公共环境，请谨慎输入密钥。
+              <br />
+              本项目在开发与构建阶段均采用明文构建，可通过浏览器“源代码/来源”自行核验。
             </p>
             {sendError && sendError.includes('API Key') && (
               <div className="modal-error-banner">
