@@ -23,6 +23,8 @@ import java.util.zip.GZIPOutputStream;
 @ConditionalOnProperty(prefix = "exception.notify.ai", name = "enabled", havingValue = "true")
 public class CompressedPayloadAiAnalysisLinkService implements AiAnalysisLinkService {
 
+    private static final String PAYLOAD_QUERY_PARAM = "payload";
+
     private final ExceptionNotifyProperties properties;
     private final ObjectMapper objectMapper;
 
@@ -50,7 +52,7 @@ public class CompressedPayloadAiAnalysisLinkService implements AiAnalysisLinkSer
 
             return UriComponentsBuilder
                     .fromUriString(baseUrl)
-                    .queryParam(aiConfig.getPayloadParam(), encoded)
+                    .queryParam(PAYLOAD_QUERY_PARAM, encoded)
                     .build(true)
                     .toUriString();
         } catch (Exception e) {

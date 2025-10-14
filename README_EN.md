@@ -92,8 +92,7 @@ exception:
       enabled: true                                                  # Enable AI analysis link
       include-code-context: true                                     # Include code context
       code-context-lines: 5                                          # Number of context lines to capture
-      analysis-page-url: http://localhost:5173                       # AI workspace URL
-      payload-param: payload                                         # Query parameter name for the compressed payload
+      analysis-page-url: https://fixit.nolimit35.com                 # AI workspace URL
     package-filter:
       enabled: false                                                 # Enable package name filtering
       include-packages:                                              # List of packages to include in analysis
@@ -145,7 +144,7 @@ Cloud Log Link: https://console.cloud.tencent.com/cls/search?region=ap-guangzhou
 -------------------------------
 ### AI Analysis:
 
-[Open AI Analysis](https://ai.example.com/analysis?payload=xxxxxx)
+[Open AI Analysis](https://fixit.nolimit35.com/?payload=xxxxxx)
 
 (The link carries the compressed exception context so you can inspect details and continue the conversation inside the workspace.)
 
@@ -162,52 +161,6 @@ mention: @John Doe
 > **Note**: The AI analysis link appears only when `exception.notify.ai.enabled` is `true` and `analysis-page-url` is configured.
 
 ## ⚙️ Advanced Configuration
-
-### 🌍 Environment Configuration
-
-You can specify which environments should report exceptions by configuring the `exception.notify.environment.report-from` property:
-
-```yaml
-exception:
-  notify:
-    environment:
-      report-from: dev,test,prod  # Report exceptions from development, test, and production environments
-```
-
-By default, the component only reports exceptions from test and prod environments, but not from the dev environment. The current environment is automatically read from Spring's `spring.profiles.active` property.
-
-### 🛡️ Exception Deduplication Configuration
-
-To avoid repeated alerts for the same exception within a short time period, Exception-Notify provides exception deduplication functionality. You can enable and customize the deduplication strategy with the following configuration:
-
-```yaml
-exception:
-  notify:
-    notification:
-      deduplication:
-        enabled: true                            # Enable exception deduplication (default: true)
-        time-window-minutes: 3                   # Deduplication time window in minutes, default 3 minutes
-        cleanup-interval-minutes: 60             # Cache cleanup interval in minutes, default 60 minutes
-```
-
-Configuration details:
-
-- **enabled**: Whether to enable exception deduplication, defaults to `true`. Set to `false` to disable deduplication
-- **time-window-minutes**: Deduplication time window in minutes. Within this time window, the same exception will only trigger one notification. Default value is 3 minutes
-- **cleanup-interval-minutes**: Cache cleanup interval in minutes. The system periodically cleans up expired cache data to prevent memory usage. Default value is 60 minutes (1 hour)
-
-**Deduplication Mechanism**:
-
-1. Exception uniqueness is determined by: exception type, exception message, and exception location (file name and line number)
-2. When the same exception occurs again within the time window, it will be filtered out and no duplicate notification will be sent
-3. After the time window expires, the same exception will trigger a notification again
-4. The system automatically cleans up expired cache data to prevent memory leaks
-
-**Use Cases**:
-
-- In high-concurrency scenarios, the same issue may trigger many exceptions in a short time, avoiding alert bombardment
-- When scheduled tasks fail, avoid sending duplicate alerts on every execution
-- The time window can be adjusted according to actual needs, such as 5 or 10 minutes
 
 ### 🧠 AI Analysis Workspace
 
@@ -279,7 +232,6 @@ The repository is configured with Cloudflare Pages automatic deployment workflow
 1. Point `analysis-page-url` to your deployed workspace (e.g., `https://your-workspace.vercel.app` or `https://your-workspace.pages.dev`)
 2. The workspace prompts users to enter API keys and model information in the browser. All sensitive configurations are stored only in browser LocalStorage
 3. Can be replaced with internal proxy service as needed
-4. If you need to customize the query parameter name, configure `exception.notify.ai.payload-param` to keep frontend and backend consistent
 
 #### 🔧 Custom Deployment
 
@@ -291,6 +243,52 @@ npm install
 npm run build
 # Deploy the dist directory to your static hosting service
 ```
+
+### 🌍 Environment Configuration
+
+You can specify which environments should report exceptions by configuring the `exception.notify.environment.report-from` property:
+
+```yaml
+exception:
+  notify:
+    environment:
+      report-from: dev,test,prod  # Report exceptions from development, test, and production environments
+```
+
+By default, the component only reports exceptions from test and prod environments, but not from the dev environment. The current environment is automatically read from Spring's `spring.profiles.active` property.
+
+### 🛡️ Exception Deduplication Configuration
+
+To avoid repeated alerts for the same exception within a short time period, Exception-Notify provides exception deduplication functionality. You can enable and customize the deduplication strategy with the following configuration:
+
+```yaml
+exception:
+  notify:
+    notification:
+      deduplication:
+        enabled: true                            # Enable exception deduplication (default: true)
+        time-window-minutes: 3                   # Deduplication time window in minutes, default 3 minutes
+        cleanup-interval-minutes: 60             # Cache cleanup interval in minutes, default 60 minutes
+```
+
+Configuration details:
+
+- **enabled**: Whether to enable exception deduplication, defaults to `true`. Set to `false` to disable deduplication
+- **time-window-minutes**: Deduplication time window in minutes. Within this time window, the same exception will only trigger one notification. Default value is 3 minutes
+- **cleanup-interval-minutes**: Cache cleanup interval in minutes. The system periodically cleans up expired cache data to prevent memory usage. Default value is 60 minutes (1 hour)
+
+**Deduplication Mechanism**:
+
+1. Exception uniqueness is determined by: exception type, exception message, and exception location (file name and line number)
+2. When the same exception occurs again within the time window, it will be filtered out and no duplicate notification will be sent
+3. After the time window expires, the same exception will trigger a notification again
+4. The system automatically cleans up expired cache data to prevent memory leaks
+
+**Use Cases**:
+
+- In high-concurrency scenarios, the same issue may trigger many exceptions in a short time, avoiding alert bombardment
+- When scheduled tasks fail, avoid sending duplicate alerts on every execution
+- The time window can be adjusted according to actual needs, such as 5 or 10 minutes
 
 
 ### 📦 Package Filter Configuration
@@ -422,8 +420,7 @@ exception:
       enabled: true                                          # Enable AI analysis link
       include-code-context: true                             # Capture code context around the failure
       code-context-lines: 5                                  # Number of lines before/after the target line
-      analysis-page-url: https://ai.example.com/analysis     # Hosted AI workspace URL
-      payload-param: payload                                 # Query parameter that carries the compressed payload
+      analysis-page-url: https://fixit.nolimit35.com         # Hosted AI workspace URL
 ```
 
 **Configuration Details**:

@@ -91,8 +91,7 @@ exception:
       enabled: true                                                  # 是否启用 AI 分析链接
       include-code-context: true                                     # 是否采集代码上下文
       code-context-lines: 5                                          # 代码上下文行数
-      analysis-page-url: http://localhost:5173                       # AI 分析工作台地址
-      payload-param: payload                                         # 压缩数据查询参数名称
+      analysis-page-url: https://fixit.nolimit35.com                 # AI 分析工作台地址
     package-filter:
       enabled: false                                                 # 是否启用包名过滤
       include-packages:                                              # 需要解析的包名列表
@@ -144,7 +143,7 @@ TraceID：7b2d1e8f9c3a5b4d6e8f9c3a5b4d6e8f
 -------------------------------
 ### AI 分析：
 
-[点击 AI 分析](https://ai.example.com/analysis?payload=xxxxxx)
+[点击 AI 分析](https://fixit.nolimit35.com/analysis?payload=xxxxxx)
 
 （链接会携带压缩后的异常上下文，可在工作台查看详情并继续与 AI 对话）
 
@@ -161,51 +160,6 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
 > **注意**：AI 分析链接需要启用 `exception.notify.ai.enabled`，并配置可访问的 `analysis-page-url`。
 
 ## ⚙️ 高级配置
-
-### 🌍 环境配置
-
-你可以通过配置 `exception.notify.environment.report-from` 属性来指定哪些环境需要上报异常：
-
-```yaml
-exception:
-  notify:
-    environment:
-      report-from: dev,test,prod  # 在开发、测试和生产环境都上报异常
-```
-
-默认情况下，组件只会在 test 和 prod 环境上报异常，而在 dev 环境不上报。当前环境会自动从 Spring 的 `spring.profiles.active` 属性中读取。
-
-### 🛡️ 异常去重配置
-
-为了避免短时间内相同异常重复告警，Exception-Notify 提供了异常去重功能。你可以通过以下配置来启用和自定义去重策略：
-
-```yaml
-exception:
-  notify:
-    notification:
-      deduplication:
-        enabled: true                            # 是否启用异常去重功能（默认：true）
-        time-window-minutes: 3                   # 去重时间窗口（分钟），默认3分钟内相同异常只通知一次
-        cleanup-interval-minutes: 60             # 缓存清理周期（分钟），默认60分钟清理一次过期缓存
-```
-
-配置说明：
-
-- **enabled**: 是否启用异常去重功能，默认为 `true`。设置为 `false` 可以关闭去重功能
-- **time-window-minutes**: 去重时间窗口，单位为分钟。在该时间窗口内，相同的异常只会通知一次。默认值为 3 分钟
-- **cleanup-interval-minutes**: 缓存清理周期，单位为分钟。系统会定期清理过期的缓存数据，避免内存占用。默认值为 60 分钟（1 小时）
-
-**去重机制说明**：
-
-1. 异常唯一性判断基于：异常类型、异常消息和异常位置（文件名和行号）
-2. 当相同异常在时间窗口内再次发生时，会被过滤掉，不会重复发送通知
-3. 超过时间窗口后，相同的异常会重新触发通知
-4. 系统会自动清理过期的缓存数据，避免内存泄漏
-
-**使用场景**：
-
-- 高并发场景下，同一个问题可能在短时间内触发大量异常，避免告警轰炸
-- 定时任务失败时，避免每次执行都发送重复告警
 
 ### 🧠 AI 分析工作台
 
@@ -268,7 +222,6 @@ exception:
 1. 将 `analysis-page-url` 指向部署后的地址（例如 `https://your-workspace.vercel.app` 或 `https://your-workspace.pages.dev`）
 2. Web 工作台会提示用户在本地浏览器输入 API Key 与模型信息，所有敏感配置仅保存在浏览器 LocalStorage 中
 3. 可根据需要替换为企业内部的中转服务
-4. 如果需要自定义查询参数名称，可通过 `exception.notify.ai.payload-param` 配置保持前后端一致
 
 #### 🔧 自定义部署
 
@@ -281,6 +234,51 @@ npm run build
 # 将 dist 目录部署到你的静态托管服务
 ```
 
+
+### 🌍 环境配置
+
+你可以通过配置 `exception.notify.environment.report-from` 属性来指定哪些环境需要上报异常：
+
+```yaml
+exception:
+  notify:
+    environment:
+      report-from: dev,test,prod  # 在开发、测试和生产环境都上报异常
+```
+
+默认情况下，组件只会在 test 和 prod 环境上报异常，而在 dev 环境不上报。当前环境会自动从 Spring 的 `spring.profiles.active` 属性中读取。
+
+### 🛡️ 异常去重配置
+
+为了避免短时间内相同异常重复告警，Exception-Notify 提供了异常去重功能。你可以通过以下配置来启用和自定义去重策略：
+
+```yaml
+exception:
+  notify:
+    notification:
+      deduplication:
+        enabled: true                            # 是否启用异常去重功能（默认：true）
+        time-window-minutes: 3                   # 去重时间窗口（分钟），默认3分钟内相同异常只通知一次
+        cleanup-interval-minutes: 60             # 缓存清理周期（分钟），默认60分钟清理一次过期缓存
+```
+
+配置说明：
+
+- **enabled**: 是否启用异常去重功能，默认为 `true`。设置为 `false` 可以关闭去重功能
+- **time-window-minutes**: 去重时间窗口，单位为分钟。在该时间窗口内，相同的异常只会通知一次。默认值为 3 分钟
+- **cleanup-interval-minutes**: 缓存清理周期，单位为分钟。系统会定期清理过期的缓存数据，避免内存占用。默认值为 60 分钟（1 小时）
+
+**去重机制说明**：
+
+1. 异常唯一性判断基于：异常类型、异常消息和异常位置（文件名和行号）
+2. 当相同异常在时间窗口内再次发生时，会被过滤掉，不会重复发送通知
+3. 超过时间窗口后，相同的异常会重新触发通知
+4. 系统会自动清理过期的缓存数据，避免内存泄漏
+
+**使用场景**：
+
+- 高并发场景下，同一个问题可能在短时间内触发大量异常，避免告警轰炸
+- 定时任务失败时，避免每次执行都发送重复告警
 
 ### 📦 包名过滤配置
 
@@ -411,8 +409,7 @@ exception:
       enabled: true                                          # 是否启用 AI 分析链接
       include-code-context: true                             # 是否采集异常位置的代码上下文
       code-context-lines: 5                                  # 异常行上下文的前后行数
-      analysis-page-url: https://ai.example.com/analysis     # AI 工作台地址
-      payload-param: payload                                 # 承载压缩数据的查询参数名称
+      analysis-page-url: https://fixit.nolimit35.com         # AI 工作台地址
 ```
 
 **配置说明**：
@@ -421,7 +418,6 @@ exception:
 2. **include-code-context**：当成功获取代码上下文时一并压缩进负载。
 3. **code-context-lines**：控制采集的上下文行数。
 4. **analysis-page-url**：指向已部署的分析工作台页面（可自建或使用示例项目）。
-5. **payload-param**：工作台解析查询参数的名称，需与前端保持一致。
 
 **注意事项**：
 

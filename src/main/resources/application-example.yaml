@@ -56,8 +56,7 @@ exception:
       enabled: true                                                  # 是否启用 AI 分析链接
       include-code-context: true                                     # 是否采集异常位置的代码上下文
       code-context-lines: 5                                          # 采集代码上下文的行数
-      analysis-page-url: http://localhost:5173                       # 外部 AI 分析页面地址
-      payload-param: payload                                         # 承载压缩数据的查询参数名称
+      analysis-page-url: https://fixit.nolimit35.com                 # 外部 AI 分析页面地址
 
 # Spring 配置
 spring:

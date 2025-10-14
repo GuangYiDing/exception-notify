@@ -388,46 +388,7 @@ public class ExceptionNotifyProperties {
          * Whether to enable AI suggestions
          */
         private boolean enabled = false;
-
-        /**
-         * AI service provider (openai, azure-openai, etc.)
-         */
-        private String provider = "openai";
-
-        /**
-         * API key for the AI service
-         */
-        private String apiKey;
-
-        /**
-         * API base URL
-         * For OpenAI: https://api.openai.com/v1/chat/completions
-         * For Azure OpenAI or other compatible services: custom URL
-         */
-        private String apiUrl = "https://api.openai.com/v1/chat/completions";
-
-        /**
-         * AI model to use
-         * For OpenAI: gpt-3.5-turbo, gpt-4, gpt-4-turbo, etc.
-         */
-        private String model = "gpt-3.5-turbo";
-
-        /**
-         * Maximum tokens in the response
-         */
-        private int maxTokens = 500;
-
-        /**
-         * Temperature for response generation (0.0 - 2.0)
-         * Lower values make output more focused and deterministic
-         */
-        private double temperature = 0.7;
-
-        /**
-         * Request timeout in seconds
-         */
-        private int timeout = 30;
-
+        
         /**
          * Whether to include code context when available
          */
@@ -441,11 +402,6 @@ public class ExceptionNotifyProperties {
         /**
          * URL of the AI analysis web page that will receive the compressed payload
          */
-        private String analysisPageUrl;
-
-        /**
-         * Query parameter name used to pass the compressed payload to the analysis page
-         */
-        private String payloadParam = "payload";
+        private String analysisPageUrl = "https://fixit.nolimit35.com";
     }
 }
