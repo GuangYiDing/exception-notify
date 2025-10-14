@@ -32,30 +32,24 @@ pre {
 }
 
 .app-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px clamp(16px, 3vw, 28px);
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.3);
+  padding: 20px clamp(16px, 3vw, 28px) 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(8px);
 }
 
 .app-header h1 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   font-size: clamp(20px, 2.2vw, 26px);
   font-weight: 600;
+  color: #e2e8f0;
 }
 
 .app-header p {
   margin: 0;
   color: #94a3b8;
-  max-width: 640px;
-  line-height: 1.4;
   font-size: 13px;
+  line-height: 1.4;
 }
 
 .settings-button {
@@ -67,6 +61,7 @@ pre {
   font-size: 13px;
   cursor: pointer;
   transition: background 0.2s ease, border 0.2s ease, transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .settings-button:hover {
@@ -229,6 +224,71 @@ pre {
   border: 1px solid rgba(248, 113, 113, 0.45);
   color: #fecaca;
   font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.welcome-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 32px;
+  gap: 24px;
+}
+
+.welcome-card h2 {
+  margin: 0;
+  font-size: clamp(22px, 2.5vw, 28px);
+  font-weight: 600;
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.welcome-text {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 15px;
+  line-height: 1.8;
+  max-width: 480px;
+}
+
+.demo-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.8), rgba(129, 140, 248, 0.8));
+  color: #020617;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+}
+
+.demo-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(56, 189, 248, 0.6);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.9), rgba(129, 140, 248, 0.9));
+}
+
+.demo-icon {
+  font-size: 20px;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 .content {

@@ -54,6 +54,8 @@ const defaultSettings: ClientSettings = {
   systemPrompt: defaultSystemPrompt
 };
 
+const DEMO_PAYLOAD = 'H4sIAAAAAAAAAK1UTW8TMRD9K8OeUqnZ7KZJPxa1UBWQeuiHINxycbyT1NRrL7Y3tKp658IRceAENy4gLgjK36HQn8HYu6GhpUJCnHY98-bpjf1mTiJWlruswCiLCiZlW5scTduimQqO0WKEaiqMVgUqR5DS6JyCmvPKGFQcByKUdpNuv52k7bQ_SJMs6Wdp19cecSyd0GpwXHrUEzZlsWRqEu9WUu5roRya-zPQfMEOWssmvub8-evzr2cX79-ev3j5_dWn-uf8w5eLj2--fT778e6MyqTmLDBkEddF7PuIQx9x00e850-PmgM3yByGUOu3hNeXpb3VBeK0jvFDZxj_u_AMtphS2oFQU32IMIwCazxBt-2wsK2FYQQj5KyyPhmUUURYUMQ2VEPHHPwf4X8mGzPO8obrQf1vq1Eh3BxVEw9M_d6MyFYqNjiWyF28S3c8xR10Bzrf5JxeSJvtopRx3XbSqgFQI_6BoXVjPqha7l5r7xmOYq6VM1pK6jM0snV5LiU931yPc6nAuLriX5rrHH0Gj7zD014XIKAhXB6s19-H-LRC63ZoXKjc6fvKCXfcMnV44fZQpb0lgCmTIv_1SKGyzvUAOJO8kpTcN7rQ3jnzgD6A_ywDdDow2Lu3l8EBU7nE4JJGDDIjBbmHgCsAUk_iHEfVpDWMNke6cuA0kDwrrKsLMjg5HUaLTfWt9ZrrTn0OBs1bC5CRK4MVIy9lY2MDyEsw67vUVjhtjmPLpjiveA3AOs0PZy6kMTxs6SvWD9B-AmDQVUbVpBSjiw_TtZ3TpYe_tl8u7aXxWjfnLO0ma6MZ5rGRBDpwrrRZpxNCMR4xcgbNhC46Iu_czMAqspOJspNI1WtuU5JY2DrAsHEKJjw5k2HAKHh3jtnvFmbdli5oWK6uumSQrGVL3SxNCTYWEps1em0yPYtQuFsVIyQhdLfedJ7ycs2NxVHWvFJjIbJHY4B6T0Bjtej09CfuTiRZtQUAAA';
+
 const textDecoder = new TextDecoder();
 
 export default function App() {
@@ -107,7 +109,7 @@ export default function App() {
       const payloadParamName = searchParams.get('payloadParam') || 'payload';
       const encoded = searchParams.get(payloadParamName);
       if (!encoded) {
-        setPayloadError('链接缺少压缩后的异常数据参数。');
+        setPayloadError('missing-payload');
         return;
       }
 
@@ -400,6 +402,12 @@ export default function App() {
     setAdditionalInfoDraft('');
   };
 
+  const loadDemoPayload = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('payload', DEMO_PAYLOAD);
+    window.location.href = url.toString();
+  };
+
   return (
     <div className="app-container">
       {showCopyToast && (
@@ -410,13 +418,8 @@ export default function App() {
       )}
       
       <header className="app-header">
-        <div>
-          <h1>异常 AI 分析工作台</h1>
-          <p>基于异常上下文快速梳理问题并联动对话式分析。</p>
-        </div>
-        <button className="settings-button" onClick={() => setSettingsOpen(v => !v)}>
-          {settingsOpen ? '关闭设置' : '打开设置'}
-        </button>
+        <h1>异常 AI 分析工作台</h1>
+        <p>基于异常上下文快速梳理问题并联动对话式分析。</p>
       </header>
 
       {settingsOpen && (
@@ -503,10 +506,24 @@ export default function App() {
         </>
       )}
 
-      {payloadError && <div className="error-banner">{payloadError}</div>}
+      {payloadError && payloadError !== 'missing-payload' && (
+        <div className="error-banner">{payloadError}</div>
+      )}
 
       <main className="content">
-        {payload && (
+        {payloadError === 'missing-payload' ? (
+          <section className="card welcome-card">
+            <h2>欢迎使用异常 AI 分析工作台</h2>
+            <p className="welcome-text">
+              通常情况下，您会通过异常通知中的链接直接访问带有异常数据的页面。
+              如果您想先体验功能，可以点击下方按钮加载示例数据。
+            </p>
+            <button className="demo-button" onClick={loadDemoPayload}>
+              <span className="demo-icon">🚀</span>
+              <span>体验示例</span>
+            </button>
+          </section>
+        ) : payload ? (
           <section className="card">
             <header className="card-header">
               <div>
@@ -691,7 +708,7 @@ export default function App() {
               )}
             </section>
           </section>
-        )}
+        ) : null}
 
         <section className="card chat-panel">
           <header className="card-header">
@@ -701,6 +718,9 @@ export default function App() {
                 根据异常上下文向 AI 提问，获取进一步的定位与修复建议。
               </p>
             </div>
+            <button className="settings-button" onClick={() => setSettingsOpen(v => !v)}>
+              {settingsOpen ? '关闭设置' : '打开设置'}
+            </button>
           </header>
           <div className="chat-window" ref={chatWindowRef}>
             {messages.map((message, index) => {
