@@ -178,6 +178,24 @@ pre {
   color: #64748b;
 }
 
+.modal-footer .build-sha {
+  margin-left: 4px;
+  font-weight: 600;
+  letter-spacing: normal;
+  color: #94a3b8;
+}
+
+.modal-footer a.build-sha {
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.modal-footer a.build-sha:hover,
+.modal-footer a.build-sha:focus {
+  color: #bae6fd;
+  text-decoration: underline;
+}
+
 @keyframes modalSlideIn {
   from {
     opacity: 0;

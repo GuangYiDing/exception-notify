@@ -58,6 +58,13 @@ const DEMO_PAYLOAD = 'H4sIAAAAAAAAAK1UTW8TMRD9K8OeUqnZ7KZJPxa1UBWQeuiHINxycbyT1N
 
 const textDecoder = new TextDecoder();
 
+const repositoryUrl = 'https://github.com/GuangYiDing/exception-notify';
+const rawBuildSha = (import.meta.env?.VITE_BUILD_SHA as string | undefined) ?? '';
+const buildSha = rawBuildSha.trim() || 'dev';
+const buildShaDisplay = buildSha.length > 7 ? buildSha.slice(0, 7) : buildSha;
+const isDevBuild = buildSha === 'dev';
+const buildShaUrl = isDevBuild ? repositoryUrl : `${repositoryUrl}/commit/${buildSha}`;
+
 export default function App() {
   const [payload, setPayload] = useState<AiAnalysisPayload | null>(null);
   const [payloadError, setPayloadError] = useState<string | null>(null);
@@ -525,7 +532,22 @@ export default function App() {
                 </label>
               </div>
             </form>
-            <p className="modal-footer">© Nolimit35-不限进步</p>
+            <p className="modal-footer">
+              © Nolimit35-不限进步 · 构建 SHA：{' '}
+              {isDevBuild ? (
+                <span className="build-sha">{buildShaDisplay}</span>
+              ) : (
+                <a
+                  className="build-sha"
+                  href={buildShaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`查看提交 ${buildSha}`}
+                >
+                  {buildShaDisplay}
+                </a>
+              )}
+            </p>
           </dialog>
         </>
       )}

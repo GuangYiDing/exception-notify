@@ -30,6 +30,8 @@ jobs:
           npm ci
 
       - name: Build
+        env:
+          VITE_BUILD_SHA: ${{ github.sha }}
         run: |
           cd web
           npm run build
