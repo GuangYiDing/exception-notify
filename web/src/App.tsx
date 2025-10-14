@@ -16,6 +16,7 @@ interface AiAnalysisPayload {
   codeContext?: string;
   traceId?: string;
   traceUrl?: string;
+  additionalInfo?: string;
   author?: {
     name?: string;
     email?: string;
@@ -37,28 +38,28 @@ type ClientSettings = {
   apiKey: string;
   model: string;
   temperature: number;
+  systemPrompt: string;
 };
 
 const SETTINGS_KEY = 'exception-notify-ai-settings';
+
+const defaultSystemPrompt =
+  '你是一个资深 Java/Spring 工程师，擅长分析异常堆栈并提供修复建议。请结合提供的上下文，输出简洁明确、可执行的建议。';
 
 const defaultSettings: ClientSettings = {
   endpoint: 'https://api.openai.com/v1/chat/completions',
   apiKey: '',
   model: 'gpt-4o-mini',
-  temperature: 0.2
+  temperature: 0.2,
+  systemPrompt: defaultSystemPrompt
 };
-
-const defaultSystemPrompt =
-  '你是一个资深 Java/Spring 工程师，擅长分析异常堆栈并提供修复建议。请结合提供的上下文，输出简洁明确、可执行的建议。';
 
 const textDecoder = new TextDecoder();
 
 export default function App() {
   const [payload, setPayload] = useState<AiAnalysisPayload | null>(null);
   const [payloadError, setPayloadError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'system', content: defaultSystemPrompt }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('根据以上信息,分析解决这个问题');
   const [isSending, setIsSending] = useState(false);
   const [collapsedMessages, setCollapsedMessages] = useState<Record<number, boolean>>({});
@@ -74,7 +75,8 @@ export default function App() {
           temperature:
             typeof parsed.temperature === 'number'
               ? parsed.temperature
-              : defaultSettings.temperature
+              : defaultSettings.temperature,
+          systemPrompt: parsed.systemPrompt ?? defaultSettings.systemPrompt
         };
       }
     } catch (err) {
@@ -89,6 +91,14 @@ export default function App() {
   const [reasoningCollapsed, setReasoningCollapsed] = useState<Record<number, boolean>>({});
   const [streamingReasoningCollapsed, setStreamingReasoningCollapsed] = useState(false);
   const chatWindowRef = useRef<HTMLDivElement>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [showCopyToast, setShowCopyToast] = useState(false);
+  const [editingCodeContext, setEditingCodeContext] = useState(false);
+  const [editingStacktrace, setEditingStacktrace] = useState(false);
+  const [editingAdditionalInfo, setEditingAdditionalInfo] = useState(false);
+  const [codeContextDraft, setCodeContextDraft] = useState('');
+  const [stacktraceDraft, setStacktraceDraft] = useState('');
+  const [additionalInfoDraft, setAdditionalInfoDraft] = useState('');
 
   useEffect(() => {
     try {
@@ -126,7 +136,47 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    
+    // Update system message when system prompt changes
+    setMessages(prev => {
+      const systemIndex = prev.findIndex(msg => msg.role === 'system');
+      if (systemIndex === -1) {
+        // Add system message if it doesn't exist
+        return [{ role: 'system', content: settings.systemPrompt }, ...prev];
+      }
+      // Update existing system message
+      const newMessages = [...prev];
+      newMessages[systemIndex] = {
+        ...newMessages[systemIndex],
+        content: settings.systemPrompt
+      };
+      return newMessages;
+    });
   }, [settings]);
+
+  // Sync payload changes to messages
+  useEffect(() => {
+    if (!payload) return;
+
+    const summaryMessage = buildSummaryPrompt(payload);
+    if (summaryMessage) {
+      setMessages(prev => {
+        const summaryIndex = prev.findIndex(
+          msg => msg.role === 'user' && msg.content.startsWith('[异常概览]')
+        );
+        if (summaryIndex === -1) {
+          return prev;
+        }
+        // Update existing summary message
+        const newMessages = [...prev];
+        newMessages[summaryIndex] = {
+          ...newMessages[summaryIndex],
+          content: summaryMessage
+        };
+        return newMessages;
+      });
+    }
+  }, [payload?.codeContext, payload?.stacktrace, payload?.additionalInfo]);
 
   // Auto scroll to bottom when streaming or new messages arrive
   useEffect(() => {
@@ -140,6 +190,16 @@ export default function App() {
       ...prev,
       [index]: !current
     }));
+  };
+
+  const copyToClipboard = async (content: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
   const sendMessage = async (userMessage: string, baseMessages?: ChatMessage[]) => {
@@ -284,8 +344,71 @@ export default function App() {
     return parts.join(' · ') || '异常详情';
   }, [payload]);
 
+  const handleCopySuccess = () => {
+    setShowCopyToast(true);
+    setTimeout(() => setShowCopyToast(false), 2000);
+  };
+
+  const handleEditCodeContext = () => {
+    setCodeContextDraft(payload?.codeContext || '');
+    setEditingCodeContext(true);
+  };
+
+  const handleSaveCodeContext = () => {
+    if (payload) {
+      setPayload({ ...payload, codeContext: codeContextDraft });
+    }
+    setEditingCodeContext(false);
+  };
+
+  const handleCancelCodeContext = () => {
+    setEditingCodeContext(false);
+    setCodeContextDraft('');
+  };
+
+  const handleEditStacktrace = () => {
+    setStacktraceDraft(payload?.stacktrace || '');
+    setEditingStacktrace(true);
+  };
+
+  const handleSaveStacktrace = () => {
+    if (payload) {
+      setPayload({ ...payload, stacktrace: stacktraceDraft });
+    }
+    setEditingStacktrace(false);
+  };
+
+  const handleCancelStacktrace = () => {
+    setEditingStacktrace(false);
+    setStacktraceDraft('');
+  };
+
+  const handleEditAdditionalInfo = () => {
+    setAdditionalInfoDraft(payload?.additionalInfo || '');
+    setEditingAdditionalInfo(true);
+  };
+
+  const handleSaveAdditionalInfo = () => {
+    if (payload) {
+      setPayload({ ...payload, additionalInfo: additionalInfoDraft });
+    }
+    setEditingAdditionalInfo(false);
+  };
+
+  const handleCancelAdditionalInfo = () => {
+    setEditingAdditionalInfo(false);
+    setAdditionalInfoDraft('');
+  };
+
   return (
     <div className="app-container">
+      {showCopyToast && (
+        <div className="copy-toast">
+          <span className="toast-icon">✓</span>
+          <span className="toast-text">已复制到剪贴板</span>
+        </div>
+      )}
+      
       <header className="app-header">
         <div>
           <h1>异常 AI 分析工作台</h1>
@@ -297,60 +420,87 @@ export default function App() {
       </header>
 
       {settingsOpen && (
-        <section className="settings-panel">
-          <h2>AI 接口设置</h2>
-          <p className="hint">
-            API Key 仅保存在当前浏览器 LocalStorage 中。若使用公共环境，请谨慎输入密钥。
-          </p>
-          <form className="settings-grid" onSubmit={event => event.preventDefault()}>
-            <label>
-              Endpoint
-              <input
-                type="text"
-                value={settings.endpoint}
-                onChange={event =>
-                  setSettings(prev => ({ ...prev, endpoint: event.target.value }))
-                }
-              />
-            </label>
-            <label>
-              Model
-              <input
-                type="text"
-                value={settings.model}
-                onChange={event =>
-                  setSettings(prev => ({ ...prev, model: event.target.value }))
-                }
-              />
-            </label>
-            <label>
-              Temperature
-              <input
-                type="number"
-                min={0}
-                max={2}
-                step={0.1}
-                value={settings.temperature}
-                onChange={event =>
-                  setSettings(prev => ({
-                    ...prev,
-                    temperature: Number(event.target.value)
-                  }))
-                }
-              />
-            </label>
-            <label>
-              API Key
-              <input
-                type="password"
-                value={settings.apiKey}
-                onChange={event =>
-                  setSettings(prev => ({ ...prev, apiKey: event.target.value }))
-                }
-              />
-            </label>
-          </form>
-        </section>
+        <>
+          <div className="modal-overlay" onClick={() => setSettingsOpen(false)} />
+          <dialog className="settings-modal" open>
+            <div className="modal-header">
+              <h2>AI 接口设置</h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setSettingsOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="hint">
+              API Key 仅保存在当前浏览器 LocalStorage 中。若使用公共环境，请谨慎输入密钥。
+            </p>
+            <form className="settings-form" onSubmit={event => event.preventDefault()}>
+              <label className="system-prompt-label">
+                系统提示词
+                <textarea
+                  className="system-prompt-input"
+                  value={settings.systemPrompt}
+                  onChange={event =>
+                    setSettings(prev => ({ ...prev, systemPrompt: event.target.value }))
+                  }
+                  placeholder="输入系统提示词，定义 AI 的角色和行为..."
+                  rows={4}
+                />
+              </label>
+              
+              <div className="settings-grid">
+                <label>
+                  Endpoint
+                  <input
+                    type="text"
+                    value={settings.endpoint}
+                    onChange={event =>
+                      setSettings(prev => ({ ...prev, endpoint: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  Model
+                  <input
+                    type="text"
+                    value={settings.model}
+                    onChange={event =>
+                      setSettings(prev => ({ ...prev, model: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  Temperature
+                  <input
+                    type="number"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={settings.temperature}
+                    onChange={event =>
+                      setSettings(prev => ({
+                        ...prev,
+                        temperature: Number(event.target.value)
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  API Key
+                  <input
+                    type="password"
+                    value={settings.apiKey}
+                    onChange={event =>
+                      setSettings(prev => ({ ...prev, apiKey: event.target.value }))
+                    }
+                  />
+                </label>
+              </div>
+            </form>
+          </dialog>
+        </>
       )}
 
       {payloadError && <div className="error-banner">{payloadError}</div>}
@@ -378,42 +528,168 @@ export default function App() {
             </header>
 
             <div className="card-grid">
-              <InfoRow label="异常类型" value={payload.exceptionType} />
-              <InfoRow label="Trace ID" value={payload.traceId} />
-              <InfoRow label="异常位置" value={payload.location} />
-              <InfoRow label="异常描述" value={payload.exceptionMessage} />
+              <InfoRow label="异常类型" value={payload.exceptionType} onCopySuccess={handleCopySuccess} />
+              <InfoRow label="Trace ID" value={payload.traceId} onCopySuccess={handleCopySuccess} />
+              <InfoRow label="异常位置" value={payload.location} onCopySuccess={handleCopySuccess} />
+              <InfoRow label="异常描述" value={payload.exceptionMessage} onCopySuccess={handleCopySuccess} />
             </div>
 
             {payload.author && (
               <section className="sub-card">
                 <h3>代码提交者</h3>
                 <div className="card-grid">
-                  <InfoRow label="姓名" value={payload.author.name} />
-                  <InfoRow label="邮箱" value={payload.author.email} />
-                  <InfoRow label="最后提交时间" value={formatDate(payload.author.lastCommitTime)} />
-                  <InfoRow label="文件位置" value={formatFileLocation(payload.author)} />
-                  <InfoRow label="提交信息" value={payload.author.commitMessage} />
+                  <InfoRow label="姓名" value={payload.author.name} onCopySuccess={handleCopySuccess} />
+                  <InfoRow label="邮箱" value={payload.author.email} onCopySuccess={handleCopySuccess} />
+                  <InfoRow label="最后提交时间" value={formatDate(payload.author.lastCommitTime)} onCopySuccess={handleCopySuccess} />
+                  <InfoRow label="文件位置" value={formatFileLocation(payload.author)} onCopySuccess={handleCopySuccess} />
+                  <InfoRow label="提交信息" value={payload.author.commitMessage} onCopySuccess={handleCopySuccess} />
                 </div>
               </section>
             )}
 
             {payload.codeContext && (
               <section className="sub-card">
-                <h3>代码上下文</h3>
-                <pre className="code-block">
-                  <code>{payload.codeContext}</code>
-                </pre>
+                <div className="editable-header">
+                  <h3>代码上下文</h3>
+                  <div className="edit-actions">
+                    {editingCodeContext ? (
+                      <>
+                        <button
+                          type="button"
+                          className="edit-button save"
+                          onClick={handleSaveCodeContext}
+                        >
+                          保存
+                        </button>
+                        <button
+                          type="button"
+                          className="edit-button cancel"
+                          onClick={handleCancelCodeContext}
+                        >
+                          取消
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="edit-button"
+                        onClick={handleEditCodeContext}
+                      >
+                        编辑
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {editingCodeContext ? (
+                  <textarea
+                    className="code-editor"
+                    value={codeContextDraft}
+                    onChange={e => setCodeContextDraft(e.target.value)}
+                  />
+                ) : (
+                  <pre className="code-block">
+                    <code>{payload.codeContext}</code>
+                  </pre>
+                )}
               </section>
             )}
 
             {payload.stacktrace && (
               <section className="sub-card">
-                <h3>堆栈信息</h3>
-                <pre className="code-block">
-                  <code>{payload.stacktrace}</code>
-                </pre>
+                <div className="editable-header">
+                  <h3>堆栈信息</h3>
+                  <div className="edit-actions">
+                    {editingStacktrace ? (
+                      <>
+                        <button
+                          type="button"
+                          className="edit-button save"
+                          onClick={handleSaveStacktrace}
+                        >
+                          保存
+                        </button>
+                        <button
+                          type="button"
+                          className="edit-button cancel"
+                          onClick={handleCancelStacktrace}
+                        >
+                          取消
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="edit-button"
+                        onClick={handleEditStacktrace}
+                      >
+                        编辑
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {editingStacktrace ? (
+                  <textarea
+                    className="code-editor"
+                    value={stacktraceDraft}
+                    onChange={e => setStacktraceDraft(e.target.value)}
+                  />
+                ) : (
+                  <pre className="code-block">
+                    <code>{payload.stacktrace}</code>
+                  </pre>
+                )}
               </section>
             )}
+
+            <section className="sub-card">
+              <div className="editable-header">
+                <h3>其他补充</h3>
+                <div className="edit-actions">
+                  {editingAdditionalInfo ? (
+                    <>
+                      <button
+                        type="button"
+                        className="edit-button save"
+                        onClick={handleSaveAdditionalInfo}
+                      >
+                        保存
+                      </button>
+                      <button
+                        type="button"
+                        className="edit-button cancel"
+                        onClick={handleCancelAdditionalInfo}
+                      >
+                        取消
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="edit-button"
+                      onClick={handleEditAdditionalInfo}
+                    >
+                      {payload?.additionalInfo ? '编辑' : '添加'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {editingAdditionalInfo ? (
+                <textarea
+                  className="code-editor"
+                  value={additionalInfoDraft}
+                  onChange={e => setAdditionalInfoDraft(e.target.value)}
+                  placeholder="在此添加其他补充信息，例如：&#10;- pom.xml 依赖配置&#10;- application.yml 配置&#10;- 环境变量&#10;- 相关日志&#10;- 其他上下文信息"
+                />
+              ) : payload?.additionalInfo ? (
+                <pre className="code-block">
+                  <code>{payload.additionalInfo}</code>
+                </pre>
+              ) : (
+                <p className="empty-hint">
+                  点击"添加"按钮补充其他信息（如 pom.xml 依赖、配置文件等），帮助 AI 更准确地分析问题。
+                </p>
+              )}
+            </section>
           </section>
         )}
 
@@ -444,15 +720,25 @@ export default function App() {
                 >
                   <div className="message-header">
                     <span className="role-label">{roleLabel(message.role)}</span>
-                    {collapsible && (
+                    <div className="message-actions">
                       <button
                         type="button"
-                        className="collapse-button"
-                        onClick={() => toggleCollapsed(index, collapsed)}
+                        className="copy-button"
+                        onClick={() => copyToClipboard(message.content, index)}
+                        title="复制内容"
                       >
-                        {collapsed ? '展开' : '收起'}
+                        {copiedIndex === index ? '✓' : '📋'}
                       </button>
-                    )}
+                      {collapsible && (
+                        <button
+                          type="button"
+                          className="collapse-button"
+                          onClick={() => toggleCollapsed(index, collapsed)}
+                        >
+                          {collapsed ? '展开' : '收起'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {message.reasoning && (
                     <div className="reasoning-section">
@@ -548,20 +834,22 @@ export default function App() {
             )}
           </div>
           <form className="chat-form" onSubmit={handleSubmit}>
-            <textarea
-              placeholder="描述你想了解的问题，按 Ctrl+Enter 发送"
-              value={input}
-              onChange={event => setInput(event.target.value)}
-              onKeyDown={event => {
-                if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-                  event.preventDefault();
-                  handleSubmit(event);
-                }
-              }}
-            />
-            <button type="submit" disabled={isSending}>
-              {isSending ? '发送中...' : '发送'}
-            </button>
+            <div className="input-wrapper">
+              <textarea
+                placeholder="描述你想了解的问题，按 Ctrl+Enter 发送"
+                value={input}
+                onChange={event => setInput(event.target.value)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    handleSubmit(event);
+                  }
+                }}
+              />
+              <button type="submit" disabled={isSending} className="send-button">
+                {isSending ? '发送中...' : '发送'}
+              </button>
+            </div>
           </form>
           {sendError && <div className="error-banner">{sendError}</div>}
         </section>
@@ -573,17 +861,33 @@ export default function App() {
 type InfoRowProps = {
   label: string;
   value?: string | number | null;
+  onCopySuccess?: () => void;
 };
 
-function InfoRow({ label, value }: InfoRowProps) {
+function InfoRow({ label, value, onCopySuccess }: InfoRowProps) {
   if (value === undefined || value === null || value === '') {
     return null;
   }
+
   const text = String(value);
+
+  const handleDoubleClick = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      onCopySuccess?.();
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   return (
     <div className="info-row">
       <span className="info-label">{label}</span>
-      <span className="info-value" title={text}>
+      <span
+        className="info-value"
+        title={`${text}\n\n💡 双击复制`}
+        onDoubleClick={handleDoubleClick}
+      >
         {text}
       </span>
     </div>
@@ -645,6 +949,9 @@ function buildSummaryPrompt(payload: AiAnalysisPayload): string | null {
         .filter(Boolean)
         .join('；')
     );
+  }
+  if (payload.additionalInfo) {
+    lines.push('\n[其他补充]', payload.additionalInfo);
   }
   return lines.filter(Boolean).join('\n');
 }
