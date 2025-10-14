@@ -211,21 +211,87 @@ Configuration details:
 
 ### 🧠 AI Analysis Workspace
 
-Exception-Notify compresses exception details and code context into a Base64URL + GZIP string and appends it to the configured `analysis-page-url`. The project ships a sample Vite + React workspace under the repository root (`web/`) which decodes the payload in the browser and allows interactive conversations with your AI provider:
+Exception-Notify compresses exception details and code context into a Base64URL + GZIP string and appends it to the configured `analysis-page-url`. The project ships a sample Vite + React workspace under the repository root (`web/`) which decodes the payload in the browser and allows interactive conversations with your AI provider.
 
-1. Start local development:
+#### 🎨 Workspace Features
+
+- 📡 **Streaming Response**: AI responses use Server-Sent Events (SSE) for real-time streaming display
+- 📝 **Markdown Rendering**: Full Markdown syntax support including headings, lists, code blocks, etc.
+- 🎨 **Code Highlighting**: Syntax highlighting based on highlight.js, supporting multiple programming languages
+- 💬 **Interactive Dialogue**: Supports multi-turn conversations for in-depth exception analysis
+- 🔄 **Regenerate**: Not satisfied with AI's answer? Regenerate with one click
+- 📋 **Quick Copy**: Quickly copy message content and code snippets
+- ✏️ **Context Editing**: Support online editing of code context, stack trace and additional notes
+- 🌙 **Dark Theme**: Eye-friendly dark interface design
+- 🔐 **Local Storage**: API keys stored only in browser LocalStorage for privacy protection
+
+#### 🚀 Quick Deploy
+
+**Deploy to Vercel with one click:**
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FYOUR_USERNAME%2Fexception-notify&project-name=exception-notify-workspace&repository-name=exception-notify&root-directory=web)
+
+> **Note**: Replace `YOUR_USERNAME` in the link above with your GitHub username
+
+**Deploy to Cloudflare Pages:**
+
+Method 1: Manual deployment via Cloudflare Dashboard
+
+1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Select Pages → Create a project
+3. Connect to your GitHub repository
+4. Configure build settings:
+   - **Build command**: `cd web && npm install && npm run build`
+   - **Build output directory**: `web/dist`
+   - **Root directory**: `/` (keep default)
+
+Method 2: Auto-deploy via GitHub Actions
+
+The repository is configured with Cloudflare Pages automatic deployment workflow. Just:
+
+1. Add the following Secrets in your GitHub repository settings:
+   - `CLOUDFLARE_API_TOKEN`: Your Cloudflare API Token
+   - `CLOUDFLARE_ACCOUNT_ID`: Your Cloudflare Account ID
+
+2. Push code to main branch or modify files in `web/` directory to trigger deployment automatically
+
+#### 📦 Local Development
+
+1. Install dependencies and start local development:
    ```bash
    cd web
    npm install
    npm run dev
    ```
+
 2. Build for production:
    ```bash
    npm run build
    ```
-3. Point `analysis-page-url` to the hosted workspace (self-hosted server or static hosting).
-4. The workspace stores API keys and model details in the browser's LocalStorage by default; switch to your internal proxy service if required.
-5. If you rename the query parameter, keep `exception.notify.ai.payload-param` consistent between backend and frontend.
+
+3. Preview production build:
+   ```bash
+   npm run preview
+   ```
+
+#### ⚙️ Configuration
+
+1. Point `analysis-page-url` to your deployed workspace (e.g., `https://your-workspace.vercel.app` or `https://your-workspace.pages.dev`)
+2. The workspace prompts users to enter API keys and model information in the browser. All sensitive configurations are stored only in browser LocalStorage
+3. Can be replaced with internal proxy service as needed
+4. If you need to customize the query parameter name, configure `exception.notify.ai.payload-param` to keep frontend and backend consistent
+
+#### 🔧 Custom Deployment
+
+Deploy to other platforms (such as Netlify, GitHub Pages, etc.):
+
+```bash
+cd web
+npm install
+npm run build
+# Deploy the dist directory to your static hosting service
+```
+
 
 ### 📦 Package Filter Configuration
 

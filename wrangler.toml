@@ -1,0 +1,10 @@
+name = "exception-notify-workspace"
+compatibility_date = "2024-01-01"
+
+[build]
+command = "cd web && npm install && npm run build"
+cwd = "."
+
+[build.upload]
+format = "directory"
+dir = "web/dist"
