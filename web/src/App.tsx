@@ -525,6 +525,7 @@ export default function App() {
                 </label>
               </div>
             </form>
+            <p className="modal-footer">© Nolimit35-不限进步</p>
           </dialog>
         </>
       )}
@@ -744,9 +745,26 @@ export default function App() {
                 根据异常上下文向 AI 提问，获取进一步的定位与修复建议。
               </p>
             </div>
-            <button className="settings-button" onClick={() => setSettingsOpen(v => !v)}>
-              {settingsOpen ? '❌ 关闭设置' : '⚙️ 打开设置'}
-            </button>
+            <div className="header-actions">
+              <a
+                className="github-link"
+                href="https://github.com/GuangYiDing/exception-notify"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="查看 GitHub 仓库"
+                title="GitHub"
+              >
+                <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M12 0a12 12 0 0 0-3.79 23.4c.6.11.82-.26.82-.58v-2c-3.34.73-4.04-1.61-4.04-1.61a3.18 3.18 0 0 0-1.34-1.75c-1.1-.76.08-.75.08-.75a2.5 2.5 0 0 1 1.84 1.24 2.54 2.54 0 0 0 3.46 1 2.52 2.52 0 0 1 .76-1.6c-2.67-.3-5.47-1.34-5.47-5.95a4.67 4.67 0 0 1 1.24-3.24 4.3 4.3 0 0 1 .12-3.2s1-.32 3.28 1.24a11.29 11.29 0 0 1 6 0c2.28-1.56 3.27-1.24 3.27-1.24a4.3 4.3 0 0 1 .12 3.2 4.67 4.67 0 0 1 1.24 3.24c0 4.62-2.81 5.64-5.49 5.94a2.83 2.83 0 0 1 .81 2.2v3.27c0 .32.22.7.82.58A12 12 0 0 0 12 0Z"
+                  />
+                </svg>
+              </a>
+              <button className="settings-button" onClick={() => setSettingsOpen(v => !v)}>
+                {settingsOpen ? '❌ 关闭设置' : '⚙️ 打开设置'}
+              </button>
+            </div>
           </header>
           <div className="chat-window" ref={chatWindowRef}>
             {messages.map((message, index) => {
