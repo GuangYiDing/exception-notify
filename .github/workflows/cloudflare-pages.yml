@@ -109,12 +109,6 @@ jobs:
           preCommands: |
             echo "🚀 Starting deployment..."
             echo "Using KV ID: $KV_NAMESPACE_ID"
-            
-            if [ ! -f web/wrangler.template.toml ]; then
-              echo "❌ Missing file: web/wrangler.template.toml"
-              exit 1
-            fi
-
             envsubst < web/wrangler.template.toml > web/wrangler.toml
             echo "✅ Generated wrangler.toml:"
             cat web/wrangler.toml
