@@ -83,6 +83,7 @@ jobs:
             pwd
             ls -la
             cd web
+            ls -la
           command: |
             pages functions build
             pages deploy ./dist --project-name=exception-notify-workspace
