@@ -80,10 +80,8 @@ jobs:
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           preCommands: |
             echo "🚀 Starting deployment..."
-            pwd
-            ls -la
             cd web
-            ls -la
+            ls
           command: |
             pages functions build
             pages deploy ./dist --project-name=exception-notify-workspace
