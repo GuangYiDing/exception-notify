@@ -71,14 +71,18 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           command:  kv namespace create "exception-notify-workspace"
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          command: |
+          preCommands: |
+            echo "🚀 Starting deployment..."
+            pwd
             cd web
+          command: |
             pages functions build
             pages deploy ./dist --project-name=exception-notify-workspace
           postCommands: |
