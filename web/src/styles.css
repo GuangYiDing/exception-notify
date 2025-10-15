@@ -13,6 +13,13 @@
   --color-accent-soft: #818cf8;
   --color-accent-strong: #4f46e5;
   --color-danger: #ef4444;
+  --color-button-primary: #6366f1;
+  --color-button-primary-hover: #4f46e5;
+  --color-button-primary-pressed: #4338ca;
+  --color-button-secondary: rgba(99, 102, 241, 0.12);
+  --color-button-secondary-hover: rgba(99, 102, 241, 0.18);
+  --color-button-secondary-strong: rgba(99, 102, 241, 0.24);
+  --color-button-text: #ffffff;
   --shadow-surface: 0 24px 80px rgba(99, 102, 241, 0.18);
 }
 
@@ -69,20 +76,21 @@ pre {
 }
 
 .settings-button {
-  border: 1px solid transparent;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  color: #fff;
+  border: none;
+  background: var(--color-button-primary);
+  color: var(--color-button-text);
   border-radius: 999px;
   padding: 8px 16px;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  box-shadow: 0 12px 28px rgba(99, 102, 241, 0.28);
+  box-shadow: 0 10px 26px rgba(99, 102, 241, 0.24);
   flex-shrink: 0;
 }
 
 .settings-button:hover {
-  background: linear-gradient(135deg, #4f46e5, #a855f7);
+  background: var(--color-button-primary-hover);
+  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.28);
   transform: translateY(-1px);
 }
 
@@ -425,19 +433,19 @@ pre {
   padding: 14px 28px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  color: #fff;
+  background: var(--color-button-primary);
+  color: var(--color-button-text);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 18px 36px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 16px 32px rgba(99, 102, 241, 0.26);
 }
 
 .demo-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 20px 42px rgba(99, 102, 241, 0.38);
-  background: linear-gradient(135deg, #4f46e5, #a855f7);
+  box-shadow: 0 18px 38px rgba(78, 70, 229, 0.32);
+  background: var(--color-button-primary-hover);
 }
 
 .demo-icon {
@@ -511,8 +519,8 @@ pre {
   gap: 8px;
   padding: 10px 14px;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(129, 140, 248, 0.18));
-  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: var(--color-button-secondary);
+  border: 1px solid rgba(99, 102, 241, 0.3);
   color: var(--color-accent-strong);
   text-decoration: none;
   font-size: 14px;
@@ -521,7 +529,7 @@ pre {
 
 .primary-link:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.22), rgba(129, 140, 248, 0.28));
+  background: var(--color-button-secondary-hover);
 }
 
 .card-grid {
@@ -660,32 +668,32 @@ pre {
 }
 
 .edit-button:hover {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(129, 140, 248, 0.28));
+  background: var(--color-button-secondary);
   border-color: rgba(99, 102, 241, 0.45);
   color: var(--color-accent-strong);
   transform: translateY(-1px);
 }
 
 .edit-button.save {
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.22), rgba(59, 130, 246, 0.28));
-  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(45, 212, 191, 0.18);
+  border-color: rgba(45, 212, 191, 0.4);
   color: #0f172a;
 }
 
 .edit-button.save:hover {
-  background: linear-gradient(135deg, rgba(45, 212, 191, 0.3), rgba(59, 130, 246, 0.4));
-  border-color: rgba(59, 130, 246, 0.55);
+  background: rgba(45, 212, 191, 0.28);
+  border-color: rgba(45, 212, 191, 0.5);
   color: #0f172a;
 }
 
 .edit-button.cancel {
-  background: linear-gradient(135deg, rgba(248, 113, 113, 0.2), rgba(239, 68, 68, 0.18));
+  background: rgba(248, 113, 113, 0.18);
   border-color: rgba(248, 113, 113, 0.32);
   color: var(--color-danger);
 }
 
 .edit-button.cancel:hover {
-  background: linear-gradient(135deg, rgba(248, 113, 113, 0.3), rgba(239, 68, 68, 0.28));
+  background: rgba(248, 113, 113, 0.3);
   border-color: rgba(248, 113, 113, 0.5);
   color: var(--color-danger);
 }
@@ -815,8 +823,8 @@ pre {
 }
 
 .copy-button:hover {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(129, 140, 248, 0.28));
-  color: #fff;
+  background: var(--color-button-secondary);
+  color: var(--color-accent-strong);
   transform: translateY(-1px);
 }
 
@@ -835,7 +843,7 @@ pre {
 }
 
 .regenerate-button:hover {
-  background: linear-gradient(135deg, rgba(129, 140, 248, 0.22), rgba(196, 181, 253, 0.28));
+  background: var(--color-button-secondary);
   color: var(--color-accent-strong);
   transform: translateY(-1px);
 }
@@ -917,8 +925,8 @@ pre {
   padding: 10px 22px;
   border-radius: 999px;
   border: none;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  color: #fff;
+  background: var(--color-button-primary);
+  color: var(--color-button-text);
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
@@ -926,7 +934,8 @@ pre {
 
 .send-button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 18px 32px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 18px 32px rgba(78, 70, 229, 0.32);
+  background: var(--color-button-primary-hover);
 }
 
 .send-button:disabled {
