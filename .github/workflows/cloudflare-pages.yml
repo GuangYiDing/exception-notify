@@ -81,6 +81,7 @@ jobs:
           preCommands: |
             echo "🚀 Starting deployment..."
             pwd
+            ls -la
             cd web
           command: |
             pages functions build
