@@ -9,6 +9,7 @@
     "preview": "vite preview --host"
   },
   "dependencies": {
+    "hono": "^4.2.11",
     "highlight.js": "^11.11.1",
     "pako": "^2.1.0",
     "react": "^18.2.0",
