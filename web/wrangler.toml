@@ -4,5 +4,4 @@ pages_build_output_dir = "./dist"
 
 [[kv_namespaces]]
 binding = "CODE_MAP"
-id = "TODO_REPLACE_WITH_KV_ID"
-preview_id = "TODO_REPLACE_WITH_KV_PREVIEW_ID"
+id = "${KV_NAMESPACE_ID}"
