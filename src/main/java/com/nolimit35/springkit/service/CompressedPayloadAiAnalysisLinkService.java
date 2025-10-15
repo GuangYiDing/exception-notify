@@ -20,7 +20,6 @@ import java.util.zip.GZIPOutputStream;
  */
 @Slf4j
 @Service
-@ConditionalOnProperty(prefix = "exception.notify.ai", name = "enabled", havingValue = "true")
 public class CompressedPayloadAiAnalysisLinkService implements AiAnalysisLinkService {
 
     private static final String PAYLOAD_QUERY_PARAM = "payload";

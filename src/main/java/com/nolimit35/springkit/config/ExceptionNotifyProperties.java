@@ -387,7 +387,7 @@ public class ExceptionNotifyProperties {
         /**
          * Whether to enable AI suggestions
          */
-        private boolean enabled = false;
+        private boolean enabled = true;
         
         /**
          * Whether to include code context when available

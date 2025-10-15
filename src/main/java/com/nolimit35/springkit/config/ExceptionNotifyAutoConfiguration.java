@@ -80,6 +80,12 @@ public class ExceptionNotifyAutoConfiguration {
         return new ExceptionDeduplicationService(properties);
     }
 
+	@Bean
+	@ConditionalOnMissingBean
+	public CompressedPayloadAiAnalysisLinkService compressedPayloadAiAnalysisLinkService(ExceptionNotifyProperties properties) {
+		return new CompressedPayloadAiAnalysisLinkService(properties);
+	}
+
     @Bean
     @ConditionalOnMissingBean
     public NotificationProviderManager notificationProviderManager(List<com.nolimit35.springkit.notification.NotificationProvider> providers) {
