@@ -109,12 +109,18 @@ jobs:
           preCommands: |
             echo "🚀 Starting deployment..."
             echo "Using KV ID: $KV_NAMESPACE_ID"
-            envsubst < wrangler.template.toml > wrangler.toml
+            
+            if [ ! -f web/wrangler.template.toml ]; then
+              echo "❌ Missing file: web/wrangler.template.toml"
+              exit 1
+            fi
+
+            envsubst < web/wrangler.template.toml > web/wrangler.toml
             echo "✅ Generated wrangler.toml:"
-            cat wrangler.toml
+            cat web/wrangler.toml
           command: |
             pages functions build web/functions
-            pages deploy web/dist --project-name=exception-notify-workspace
+            pages deploy --project-name=exception-notify-workspace
           postCommands: |
             echo "🎉 Deployment finished!"
             wrangler whoami
