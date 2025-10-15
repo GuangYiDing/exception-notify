@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && node scripts/copy-functions.cjs",
+    "build": "tsc && vite build",
     "preview": "vite preview --host"
   },
   "dependencies": {
