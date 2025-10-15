@@ -38,7 +38,7 @@ app.post('/api/compress', async (c) => {
     return c.json({code: 0, data: hashHex});
 });
 
-app.get('/api/depress', async (c) => {
+app.get('/api/decompress', async (c) => {
     const payload = c.req.query('payload');
 
     if (!payload) {
