@@ -11,14 +11,11 @@ export default defineConfig({
     port: 4173,
     host: true
   },
-  esbuild: {
-    minify: false
-  },
   build: {
-    minify: false,
+    minify: 'terser',
     rollupOptions: {
       output: {
-        compact: false
+        compact: true
       }
     }
   }
