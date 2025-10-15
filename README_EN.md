@@ -96,7 +96,7 @@ exception:
       enabled: true                                                  # Enable AI analysis link
       include-code-context: true                                     # Include code context
       code-context-lines: 5                                          # Number of context lines to capture
-      analysis-page-url: https://fixit.nolimit35.com                 # AI workspace URL
+      analysis-page-url: https://fixit.nolimit35.com                 # AI workspace URL (must expose /api/compress)
     package-filter:
       enabled: false                                                 # Enable package name filtering
       include-packages:                                              # List of packages to include in analysis
@@ -150,7 +150,7 @@ Cloud Log Link: https://console.cloud.tencent.com/cls/search?region=ap-guangzhou
 
 [Open AI Analysis](https://fixit.nolimit35.com/?payload=xxxxxx)
 
-(The link carries the compressed exception context so you can inspect details and continue the conversation inside the workspace.)
+(The link embeds a 16-character token from `/api/compress`; the workspace decodes the context and lets you continue the conversation.)
 
 -------------------------------
 Stack Trace:
@@ -168,7 +168,7 @@ mention: @John Doe
 
 ### 🧠 AI Analysis Workspace
 
-Exception-Notify compresses exception details and code context into a Base64URL + GZIP string and appends it to the configured `analysis-page-url`. The project ships a sample Vite + React workspace under the repository root (`web/`) which decodes the payload in the browser and allows interactive conversations with your AI provider.
+Exception-Notify compresses exception details and code context into a Base64URL + GZIP string, calls the `/api/compress` endpoint hosted under the configured `analysis-page-url` to obtain a 16-character token, and then builds the final link with `?payload=`. The project ships a sample Vite + React workspace under the repository root (`web/`) which decodes the payload in the browser and allows interactive conversations with your AI provider.
 
 #### 🎨 Workspace Features
 
@@ -233,7 +233,7 @@ The repository is configured with Cloudflare Pages automatic deployment workflow
 
 #### ⚙️ Configuration
 
-1. Point `analysis-page-url` to your deployed workspace (e.g., `https://your-workspace.vercel.app` or `https://your-workspace.pages.dev`)
+1. Point `analysis-page-url` to your deployed workspace root (e.g., `https://your-workspace.vercel.app`), and ensure the same origin exposes a POST `/api/compress` endpoint.
 2. The workspace prompts users to enter API keys and model information in the browser. All sensitive configurations are stored only in browser LocalStorage
 3. Can be replaced with internal proxy service as needed
 
@@ -424,7 +424,7 @@ exception:
       enabled: true                                          # Enable AI analysis link
       include-code-context: true                             # Capture code context around the failure
       code-context-lines: 5                                  # Number of lines before/after the target line
-      analysis-page-url: https://fixit.nolimit35.com         # Hosted AI workspace URL
+      analysis-page-url: https://fixit.nolimit35.com         # Hosted AI workspace URL (with /api/compress)
 ```
 
 **Configuration Details**:
@@ -432,7 +432,7 @@ exception:
 1. **enabled**: Turns on payload generation and the AI analysis link block.
 2. **include-code-context**: Captures surrounding source code when repository integrations can provide it.
 3. **code-context-lines**: Controls how many lines before and after the error line are included.
-4. **analysis-page-url**: Where the notification should point users for deep-dive analysis; typically a self-hosted web workspace.
+4. **analysis-page-url**: Root of your hosted workspace; the same origin must provide a POST `/api/compress` endpoint accepting `{payload: longCode}`.
 5. **payload-param**: Query parameter name expected by the workspace; defaults to `payload` and must stay in sync with the frontend.
 
 **Important Notes**:
