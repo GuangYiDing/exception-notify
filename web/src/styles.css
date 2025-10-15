@@ -1,6 +1,15 @@
 :root {
   color-scheme: light;
-  --color-bg-gradient: radial-gradient(125% 125% at 50% 10%, #ffffff 35%, #ede9fe 65%, #c7d2fe 90%);
+  --color-bg-gradient: radial-gradient(
+    155% 135% at 50% 4%,
+    #ffffff 0%,
+    #ffffff 30%,
+    rgba(239, 241, 255, 0.82) 48%,
+    rgba(216, 218, 255, 0.88) 64%,
+    rgba(174, 180, 255, 0.92) 80%,
+    rgba(125, 129, 255, 0.94) 92%,
+    #6366f1 100%
+  );
   --color-surface: rgba(255, 255, 255, 0.92);
   --color-surface-strong: rgba(255, 255, 255, 0.98);
   --color-glass: rgba(255, 255, 255, 0.72);
@@ -34,6 +43,34 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: var(--color-bg-gradient);
   color: var(--color-text-primary);
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+}
+
+body::before {
+  inset: -14% -10% -26%;
+  background:
+    radial-gradient(120% 85% at 6% 94%, rgba(104, 79, 255, 0.6) 0%, rgba(104, 79, 255, 0) 72%),
+    radial-gradient(120% 85% at 94% 94%, rgba(127, 100, 255, 0.58) 0%, rgba(127, 100, 255, 0) 72%),
+    radial-gradient(150% 135% at 50% 10%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 58%),
+    conic-gradient(from 210deg at 50% 18%, rgba(255, 255, 255, 0.5) 0deg, rgba(255, 255, 255, 0) 120deg, rgba(255, 255, 255, 0.45) 210deg, rgba(255, 255, 255, 0) 360deg);
+}
+
+body::after {
+  inset: auto -22% -45%;
+  height: 78vh;
+  background: radial-gradient(65% 90% at 50% 24%, rgba(108, 84, 255, 0.68) 0%, rgba(108, 84, 255, 0.08) 68%, rgba(108, 84, 255, 0) 100%);
+  filter: blur(140px);
+  opacity: 0.7;
 }
 
 a {
