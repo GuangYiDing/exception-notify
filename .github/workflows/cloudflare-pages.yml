@@ -82,6 +82,8 @@ jobs:
             echo "🚀 Starting deployment..."
             cd web
             ls
+            cd web
+            ls
           command: |
             pages functions build
             pages deploy ./dist --project-name=exception-notify-workspace
