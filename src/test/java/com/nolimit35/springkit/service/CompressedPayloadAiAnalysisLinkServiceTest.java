@@ -31,7 +31,6 @@ class CompressedPayloadAiAnalysisLinkServiceTest {
         ExceptionNotifyProperties.AI aiConfig = new ExceptionNotifyProperties.AI();
         aiConfig.setEnabled(true);
         aiConfig.setAnalysisPageUrl("http://localhost:5173");
-        aiConfig.setPayloadParam("payload");
         properties.setAi(aiConfig);
 
         service = new CompressedPayloadAiAnalysisLinkService(properties);
@@ -253,7 +252,7 @@ class CompressedPayloadAiAnalysisLinkServiceTest {
         String encodedPayload = UriComponentsBuilder.fromUriString(link)
                 .build()
                 .getQueryParams()
-                .getFirst(properties.getAi().getPayloadParam());
+                .getFirst("payload");
         assertNotNull(encodedPayload);
         return decodePayload(encodedPayload);
     }
