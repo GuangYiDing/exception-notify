@@ -61,7 +61,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          command: wrangler kv namespace list
+          command: kv namespace list
 
       - name: Create Cloudflare KV namespace
         if: ${{ !contains(steps.list-kv.outputs.command-output, 'exception-notify-workspace') }}
@@ -70,7 +70,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          command: wrangler kv namespace create --namespace=EXCEPTION_NOTIFY_WORKSPACE
+          command:  kv namespace create --namespace=EXCEPTION_NOTIFY_WORKSPACE
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
