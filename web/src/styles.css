@@ -76,21 +76,21 @@ pre {
 }
 
 .settings-button {
-  border: none;
-  background: var(--color-button-primary);
-  color: var(--color-button-text);
+  border: 1px solid var(--color-accent-strong);
+  background: transparent;
+  color: var(--color-accent-strong);
   border-radius: 999px;
   padding: 8px 16px;
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  box-shadow: 0 10px 26px rgba(99, 102, 241, 0.24);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  box-shadow: none;
   flex-shrink: 0;
 }
 
 .settings-button:hover {
-  background: var(--color-button-primary-hover);
-  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.28);
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--color-accent);
   transform: translateY(-1px);
 }
 
@@ -431,21 +431,22 @@ pre {
   align-items: center;
   gap: 10px;
   padding: 14px 28px;
-  border: none;
+  border: 1px solid var(--color-accent-strong);
   border-radius: 999px;
-  background: var(--color-button-primary);
-  color: var(--color-button-text);
+  background: transparent;
+  color: var(--color-accent-strong);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 16px 32px rgba(99, 102, 241, 0.26);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  box-shadow: none;
 }
 
 .demo-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 18px 38px rgba(78, 70, 229, 0.32);
-  background: var(--color-button-primary-hover);
+  box-shadow: none;
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--color-accent);
 }
 
 .demo-icon {
@@ -924,18 +925,19 @@ pre {
   bottom: 10px;
   padding: 10px 22px;
   border-radius: 999px;
-  border: none;
-  background: var(--color-button-primary);
-  color: var(--color-button-text);
+  border: 1px solid var(--color-accent-strong);
+  background: transparent;
+  color: var(--color-accent-strong);
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 .send-button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 18px 32px rgba(78, 70, 229, 0.32);
-  background: var(--color-button-primary-hover);
+  box-shadow: none;
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--color-accent);
 }
 
 .send-button:disabled {
