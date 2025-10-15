@@ -1,7 +1,11 @@
-# Exception-Notify
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Exception-Notify logo" width="200">
+</p>
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.nolimit35.springkit/exception-notify.svg)](https://search.maven.org/search?q=g:com.nolimit35.springkit%20AND%20a:exception-notify)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/GuangYiDing/exception-notify&project-name=exception-notify-workspace&repository-name=exception-notify&root-directory=web)
+[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/GuangYiDing/exception-notify)
 
 [English](README_EN.md) | [简体中文](README.md)
 
@@ -720,3 +724,6 @@ Issues and Pull Requests are welcome to help improve this project.
 ## 📄 License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
+
+
+[![Star History Chart](https://api.star-history.com/svg?repos=GuangYiDing/exception-notify&type=date&legend=top-left)](https://www.star-history.com/#GuangYiDing/exception-notify&type=date&legend=top-left)
