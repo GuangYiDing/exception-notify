@@ -13,3 +13,9 @@ NEXT_PUBLIC_BUILD_SHA = "${GIT_COMMIT_SHA}"
 [[kv_namespaces]]
 binding = "CODE_MAP"
 id = "${KV_NAMESPACE_ID}"
+
+[observability]
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
