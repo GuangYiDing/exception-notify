@@ -86,7 +86,7 @@ public class DefaultNotificationFormatter implements NotificationFormatter {
         // Format AI analysis link if available
         if (exceptionInfo.getAiAnalysisUrl() != null && !exceptionInfo.getAiAnalysisUrl().isEmpty()) {
             sb.append("---\n\n");
-            sb.append("### AI 分析：\n\n");
+            sb.append("### AI 分析：");
             sb.append("[点击 AI 分析](").append(exceptionInfo.getAiAnalysisUrl()).append(")\n\n");
         }
 

@@ -6,15 +6,14 @@ import com.nolimit35.springkit.model.CodeAuthorInfo;
 import com.nolimit35.springkit.model.ExceptionInfo;
 import com.nolimit35.springkit.trace.TraceInfoProvider;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -29,7 +28,7 @@ public class ExceptionAnalyzerService {
     private final ExceptionNotifyProperties properties;
     private final TraceInfoProvider traceInfoProvider;
 
-    @Autowired(required = false)
+    @Resource
     private AiAnalysisLinkService aiAnalysisLinkService;
 
     @Value("${spring.application.name:unknown}")
