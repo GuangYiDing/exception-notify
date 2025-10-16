@@ -12,6 +12,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy to Cloudflare Pages
+    defaults:
+      run:
+        working-directory: web 
 
     steps:
       - name: Checkout
@@ -25,16 +28,12 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
-        run: |
-          cd web
-          npm ci
+        run: npm ci
 
       - name: Build
         env:
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
-        run: |
-          cd web
-          npm run build:opennextjs
+        run: npm run build:opennextjs
 
       # Step 1️⃣ - List KV namespaces
       - name: List Cloudflare KV namespaces
@@ -66,20 +65,27 @@ jobs:
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           command: kv namespace list
 
-      # Step 4️⃣ - Extract correct KV ID
-      - name: Extract KV namespace ID
-        id: extract-kv-id
+      # Step 4️⃣ - Extract KV ID & Generate wrangler.toml
+      - name: Extract KV ID and Generate wrangler.toml
         run: |
           echo "🔍 Extracting KV ID for 'worker-exception-notify-workspace'..."
           KV_ID=$(echo '${{ steps.list-kv-again.outputs.command-output }}' | jq -r '.[] | select(.title=="worker-exception-notify-workspace") | .id')
+
           if [ -z "$KV_ID" ] || [ "$KV_ID" = "null" ]; then
             echo "❌ Failed to extract KV_NAMESPACE_ID!"
             echo "Raw JSON output below:"
             echo '${{ steps.list-kv-again.outputs.command-output }}'
             exit 1
           fi
+
           echo "✅ Found KV_NAMESPACE_ID=$KV_ID"
           echo "KV_NAMESPACE_ID=$KV_ID" >> $GITHUB_ENV
+
+          echo "🚀 Generating wrangler.toml..."
+          export KV_NAMESPACE_ID=$KV_ID
+          envsubst < wrangler.template.toml > wrangler.toml
+          echo "✅ Generated wrangler.toml:"
+          cat wrangler.toml
 
       # Step 5️⃣ - Deploy to Cloudflare Workers
       - name: Deploy to Cloudflare Workers
@@ -88,14 +94,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          preCommands: |
-            echo "🚀 Starting deployment..."
-            echo "Using KV ID: $KV_NAMESPACE_ID"
-            envsubst < web/wrangler.template.toml > web/wrangler.toml
-            echo "✅ Generated wrangler.toml:"
-            cat web/wrangler.toml
-          command: |
-            deploy --name=exception-notify-worker
+          command: deploy --name=exception-notify-worker
           postCommands: |
             echo "🎉 Deployment finished!"
             wrangler whoami
