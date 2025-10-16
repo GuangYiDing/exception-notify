@@ -34,7 +34,7 @@ jobs:
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
         run: |
           cd web
-          opennextjs-cloudflare build
+          npm run build:opennextjs
 
       # Step 1️⃣ - List KV namespaces
       - name: List Cloudflare KV namespaces
