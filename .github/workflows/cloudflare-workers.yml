@@ -67,6 +67,8 @@ jobs:
 
       # Step 4️⃣ - Extract KV ID & Generate wrangler.toml
       - name: Extract KV ID and Generate wrangler.toml
+        env:
+          GIT_COMMIT_SHA: ${{ github.sha }}
         run: |
           echo "🔍 Extracting KV ID for 'worker-exception-notify-workspace'..."
           KV_ID=$(echo '${{ steps.list-kv-again.outputs.command-output }}' | jq -r '.[] | select(.title=="worker-exception-notify-workspace") | .id')
@@ -94,6 +96,9 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          preCommands: |
+            pwd
+            ls -la
           command: deploy --name=exception-notify-worker
           postCommands: |
             echo "🎉 Deployment finished!"
