@@ -1,7 +1,7 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { ungzip } from 'pako';
+import {FormEvent, useEffect, useMemo, useRef, useState} from 'react';
+import {ungzip} from 'pako';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -57,7 +57,10 @@ const defaultSettings: ClientSettings = {
 };
 
 const DEMO_PAYLOAD = 'H4sIAAAAAAAAAK1UTW8TMRD9K8OeUqnZ7KZJPxa1UBWQeuiHINxycbyT1NRrL7Y3tKp658IRceAENy4gLgjK36HQn8HYu6GhpUJCnHY98-bpjf1mTiJWlruswCiLCiZlW5scTduimQqO0WKEaiqMVgUqR5DS6JyCmvPKGFQcByKUdpNuv52k7bQ_SJMs6Wdp19cecSyd0GpwXHrUEzZlsWRqEu9WUu5roRya-zPQfMEOWssmvub8-evzr2cX79-ev3j5_dWn-uf8w5eLj2--fT778e6MyqTmLDBkEddF7PuIQx9x00e850-PmgM3yByGUOu3hNeXpb3VBeK0jvFDZxj_u_AMtphS2oFQU32IMIwCazxBt-2wsK2FYQQj5KyyPhmUUURYUMQ2VEPHHPwf4X8mGzPO8obrQf1vq1Eh3BxVEw9M_d6MyFYqNjiWyF28S3c8xR10Bzrf5JxeSJvtopRx3XbSqgFQI_6BoXVjPqha7l5r7xmOYq6VM1pK6jM0snV5LiU931yPc6nAuLriX5rrHH0Gj7zD014XIKAhXB6s19-H-LRC63ZoXKjc6fvKCXfcMnV44fZQpb0lgCmTIv_1SKGyzvUAOJO8kpTcN7rQ3jnzgD6A_ywDdDow2Lu3l8EBU7nE4JJGDDIjBbmHgCsAUk_iHEfVpDWMNke6cuA0kDwrrKsLMjg5HUaLTfWt9ZrrTn0OBs1bC5CRK4MVIy9lY2MDyEsw67vUVjhtjmPLpjiveA3AOs0PZy6kMTxs6SvWD9B-AmDQVUbVpBSjiw_TtZ3TpYe_tl8u7aXxWjfnLO0ma6MZ5rGRBDpwrrRZpxNCMR4xcgbNhC46Iu_czMAqspOJspNI1WtuU5JY2DrAsHEKJjw5k2HAKHh3jtnvFmbdli5oWK6uumSQrGVL3SxNCTYWEps1em0yPYtQuFsVIyQhdLfedJ7ycs2NxVHWvFJjIbJHY4B6T0Bjtej09CfuTiRZtQUAAA';
-
+const DEMO_SHORT_CODE = '6abdc76d4ea8a70a08420300b52ff8d3483bb2633c185c2dc709cd5851d8144c';
+const DEMO_KV: Record<string, string> = {
+  [DEMO_SHORT_CODE]: DEMO_PAYLOAD
+};
 const textDecoder = new TextDecoder();
 
 const repositoryUrl = 'https://github.com/GuangYiDing/exception-notify';
@@ -115,37 +118,54 @@ export default function App() {
   const [additionalInfoDraft, setAdditionalInfoDraft] = useState('');
 
   useEffect(() => {
-    try {
-      const url = new URL(window.location.href);
-      const searchParams = url.searchParams;
-      const payloadParamName = searchParams.get('payloadParam') || 'payload';
-      const encoded = searchParams.get(payloadParamName);
-      if (!encoded) {
-        setPayloadError('missing-payload');
-        return;
-      }
+    const resolvePayload = async () => {
+      try {
+        const url = new URL(window.location.href);
+        const searchParams = url.searchParams;
+        const payloadParamName = searchParams.get('payloadParam') || 'payload';
+        const encoded = searchParams.get(payloadParamName);
+        if (!encoded) {
+          setPayloadError('missing-payload');
+          return;
+        }
 
-      const bytes = decodeBase64Url(encoded);
-      const decompressed = ungzip(bytes);
-      const json = textDecoder.decode(decompressed);
-      const parsed: AiAnalysisPayload = JSON.parse(json);
-      setPayload(parsed);
-      setPayloadError(null);
-
-      const summaryMessage = buildSummaryPrompt(parsed);
-      if (summaryMessage) {
-        setMessages(prev => {
-          const hasSummary = prev.some(msg => msg.role === 'user' && msg.content.startsWith('[异常概览]'));
-          if (hasSummary) {
-            return prev;
+        let compressed = DEMO_KV[encoded];
+        if (!compressed) {
+          const response = await fetch(`/api/decompress?payload=${encodeURIComponent(encoded)}`);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch payload: ${response.status}`);
           }
-          return [...prev, { role: 'user', content: summaryMessage }];
-        });
+          const body: { code?: number; data?: string; message?: string } = await response.json();
+          if (body.code !== 0 || typeof body.data !== 'string') {
+            throw new Error(body.message || 'Invalid payload response');
+          }
+          compressed = body.data;
+        }
+
+        const bytes = decodeBase64Url(compressed);
+        const decompressed = ungzip(bytes);
+        const json = textDecoder.decode(decompressed);
+        const parsed: AiAnalysisPayload = JSON.parse(json);
+        setPayload(parsed);
+        setPayloadError(null);
+
+        const summaryMessage = buildSummaryPrompt(parsed);
+        if (summaryMessage) {
+          setMessages(prev => {
+            const hasSummary = prev.some(msg => msg.role === 'user' && msg.content.startsWith('[异常概览]'));
+            if (hasSummary) {
+              return prev;
+            }
+            return [...prev, { role: 'user', content: summaryMessage }];
+          });
+        }
+      } catch (error) {
+        console.error('Failed to decode payload', error);
+        setPayloadError('无法解析 AI 分析参数，请确认链接未被篡改。');
       }
-    } catch (error) {
-      console.error('Failed to decode payload', error);
-      setPayloadError('无法解析 AI 分析参数，请确认链接未被篡改。');
-    }
+    };
+
+    resolvePayload();
   }, []);
 
   useEffect(() => {
@@ -441,7 +461,7 @@ export default function App() {
 
   const loadDemoPayload = () => {
     const url = new URL(window.location.href);
-    url.searchParams.set('payload', DEMO_PAYLOAD);
+      url.searchParams.set('payload', DEMO_SHORT_CODE);
     window.location.href = url.toString();
   };
 
