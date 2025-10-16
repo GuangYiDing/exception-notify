@@ -38,6 +38,6 @@ export async function POST(request: NextRequest) {
     return jsonResponse({ code: 0, data: hashHex });
   }
 
-  await env.CODE_MAP.put(hashHex, payload);
+  await env.CODE_MAP.put(hashHex, payload, { expirationTtl: 60 * 60 * 24 * 30 });
   return jsonResponse({ code: 0, data: hashHex });
 }
