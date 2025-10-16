@@ -4,7 +4,6 @@
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.nolimit35.springkit/exception-notify.svg)](https://search.maven.org/search?q=g:com.nolimit35.springkit%20AND%20a:exception-notify)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/GuangYiDing/exception-notify&project-name=exception-notify-workspace&repository-name=exception-notify&root-directory=web)
 [![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/GuangYiDing/exception-notify)
 
 [English](README_EN.md) | [简体中文](README.md)
@@ -184,25 +183,9 @@ Exception-Notify compresses exception details and code context into a Base64URL 
 
 #### 🚀 Quick Deploy
 
-**Deploy to Vercel with one click:**
+**Deploy to Cloudflare Workers:**
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FYOUR_USERNAME%2Fexception-notify&project-name=exception-notify-workspace&repository-name=exception-notify&root-directory=web)
-
-> **Note**: Replace `YOUR_USERNAME` in the link above with your GitHub username
-
-**Deploy to Cloudflare Pages:**
-
-Method 1: Manual deployment via Cloudflare Dashboard
-
-1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. Select Pages → Create a project
-3. Connect to your GitHub repository
-4. Configure build settings:
-   - **Build command**: `cd web && npm install && npm run build`
-   - **Build output directory**: `web/dist`
-   - **Root directory**: `/` (keep default)
-
-Method 2: Auto-deploy via GitHub Actions
+Auto-deploy via GitHub Actions
 
 The repository is configured with Cloudflare Pages automatic deployment workflow. Just:
 

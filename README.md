@@ -4,7 +4,6 @@
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.nolimit35.springkit/exception-notify.svg)](https://search.maven.org/search?q=g:com.nolimit35.springkit%20AND%20a:exception-notify)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/GuangYiDing/exception-notify&project-name=exception-notify-workspace&repository-name=exception-notify&root-directory=web)
 [![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/GuangYiDing/exception-notify)
 
 [English](README_EN.md) | [简体中文](README.md)
@@ -183,18 +182,14 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
 
 #### 🚀 快速部署
 
-**一键部署到 Vercel：**
+**一键部署到 Cloudflare Workers：**
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/GuangYiDing/exception-notify&project-name=exception-notify-workspace&repository-name=exception-notify&root-directory=web)
-
-**一键部署到 Cloudflare Pages：**
-
-[![Deploy to Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/GuangYiDing/exception-notify)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/GuangYiDing/exception-notify)
 
 
 **通过 GitHub Actions 自动部署：**
 
-仓库已配置 Cloudflare Pages 自动部署 workflow，只需：
+仓库已配置 Cloudflare Workers 自动部署 workflow，只需：
 
 1. 在 GitHub 仓库设置中添加以下 Secrets：
    - `CLOUDFLARE_API_TOKEN`：Cloudflare API Token

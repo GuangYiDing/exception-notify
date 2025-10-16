@@ -1,6 +1,15 @@
-name = "exception-notify-workspace"
-compatibility_date = "2024-01-01"
-pages_build_output_dir = "./dist"
+name = "exception-notify-worker"
+main = "./.open-next/worker.js"
+compatibility_date = "2024-12-30"
+compatibility_flags = ["nodejs_compat","global_fetch_strictly_public"]
+workers_dev = true
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[vars]
+NEXT_PUBLIC_BUILD_SHA = "${GIT_COMMIT_SHA}"
 
 [[kv_namespaces]]
 binding = "CODE_MAP"

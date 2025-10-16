@@ -34,3 +34,6 @@ build/
 ### Web UI ###
 web/node_modules/
 web/dist/
+web/.next/
+web/.open-next/
+web/.wrangler/

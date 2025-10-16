@@ -31,28 +31,10 @@ jobs:
 
       - name: Build
         env:
-          VITE_BUILD_SHA: ${{ github.sha }}
+          NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
         run: |
           cd web
-          npm run build
-
-      - name: List Cloudflare Pages projects
-        id: list-projects
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          command: pages project list
-
-      - name: Create Cloudflare Pages project if missing
-        if: ${{ !contains(steps.list-projects.outputs.command-output, 'exception-notify-workspace') }}
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          command: pages project create exception-notify-workspace --production-branch=main
+          opennextjs-cloudflare build
 
       # Step 1️⃣ - List KV namespaces
       - name: List Cloudflare KV namespaces
@@ -99,8 +81,8 @@ jobs:
           echo "✅ Found KV_NAMESPACE_ID=$KV_ID"
           echo "KV_NAMESPACE_ID=$KV_ID" >> $GITHUB_ENV
 
-      # Step 5️⃣ - Deploy to Cloudflare Pages
-      - name: Deploy to Cloudflare Pages
+      # Step 5️⃣ - Deploy to Cloudflare Workers
+      - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -113,8 +95,7 @@ jobs:
             echo "✅ Generated wrangler.toml:"
             cat web/wrangler.toml
           command: |
-            pages functions build web/functions --outdir=web/dist
-            pages deploy web/dist --project-name=exception-notify-workspace
+            deploy --name=exception-notify-worker
           postCommands: |
             echo "🎉 Deployment finished!"
             wrangler whoami

@@ -1,3 +1,5 @@
+'use client';
+
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { ungzip } from 'pako';
 import ReactMarkdown from 'react-markdown';
@@ -59,8 +61,8 @@ const DEMO_PAYLOAD = 'H4sIAAAAAAAAAK1UTW8TMRD9K8OeUqnZ7KZJPxa1UBWQeuiHINxycbyT1N
 const textDecoder = new TextDecoder();
 
 const repositoryUrl = 'https://github.com/GuangYiDing/exception-notify';
-const rawBuildSha = (import.meta.env?.VITE_BUILD_SHA as string | undefined) ?? '';
-const buildSha = rawBuildSha.trim() || 'dev';
+const rawBuildSha = (process.env.NEXT_PUBLIC_BUILD_SHA ?? '').trim();
+const buildSha = rawBuildSha || 'dev';
 const buildShaDisplay = buildSha.length > 7 ? buildSha.slice(0, 7) : buildSha;
 const isDevBuild = buildSha === 'dev';
 const buildShaUrl = isDevBuild ? repositoryUrl : `${repositoryUrl}/commit/${buildSha}`;
@@ -73,6 +75,9 @@ export default function App() {
   const [isSending, setIsSending] = useState(false);
   const [collapsedMessages, setCollapsedMessages] = useState<Record<number, boolean>>({});
   const [settings, setSettings] = useState<ClientSettings>(() => {
+    if (typeof window === 'undefined') {
+      return defaultSettings;
+    }
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (raw) {
@@ -144,6 +149,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     
     // Update system message when system prompt changes

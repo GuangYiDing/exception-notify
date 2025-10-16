@@ -1,15 +1,21 @@
 {
   "name": "exception-notify-ai-web",
   "private": true,
-  "version": "0.1.0",
-  "type": "module",
+  "version": "0.2.0",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview --host"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+"upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+"cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.11.0",
     "highlight.js": "^11.11.1",
+    "next": "^14.2.3",
     "pako": "^2.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -18,10 +24,14 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241112.0",
+    "@types/node": "^20.11.5",
     "@types/react": "^18.2.28",
     "@types/react-dom": "^18.2.13",
-    "@vitejs/plugin-react": "^4.2.0",
+    "esbuild": "^0.21.5",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.2.3",
     "typescript": "^5.3.3",
-    "vite": "^4.5.0"
+    "wrangler": "^4.43.0"
   }
 }
