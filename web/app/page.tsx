@@ -29,10 +29,26 @@ interface AiAnalysisPayload {
   };
 }
 
+type ToolCall = {
+  id?: string;
+  type?: string;
+  mcp?: {
+    name?: string;
+    arguments?: unknown;
+    [key: string]: unknown;
+  };
+  function?: {
+    name?: string;
+    arguments?: unknown;
+  };
+};
+
 type ChatMessage = {
-  role: 'system' | 'user' | 'assistant';
+  role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
+  tool_calls?: ToolCall[];
   reasoning?: string;
+  tool_call_id?: string;
 };
 
 type ClientSettings = {
@@ -42,6 +58,8 @@ type ClientSettings = {
   temperature: number;
   systemPrompt: string;
 };
+
+type McpTransportType = 'streamable-http' | 'sse';
 
 type McpTool = {
   name: string;
@@ -55,6 +73,54 @@ type McpServerInfo = {
   name?: string;
   version?: string;
   description?: string;
+};
+
+type McpServerData = {
+  name?: string;
+  info?: unknown;
+  tools?: McpTool[];
+  error?: string;
+};
+
+const extractServerInfo = (server?: McpServerData, fallbackName?: string): McpServerInfo | null => {
+  const fallback = typeof fallbackName === 'string' && fallbackName.trim().length > 0 ? fallbackName.trim() : undefined;
+
+  if (!server) {
+    return fallback ? { name: fallback } : null;
+  }
+
+  const info =
+    server.info && typeof server.info === 'object' && !Array.isArray(server.info)
+      ? (server.info as Record<string, unknown>)
+      : {};
+
+  const infoName = typeof info.name === 'string' && info.name.trim().length > 0 ? info.name.trim() : undefined;
+  const infoVersion =
+    typeof info.version === 'string' && info.version.trim().length > 0 ? info.version.trim() : undefined;
+  const infoDescription =
+    typeof info.description === 'string' && info.description.trim().length > 0 ? info.description.trim() : undefined;
+
+  const resolvedName =
+    (typeof server.name === 'string' && server.name.trim().length > 0 ? server.name.trim() : undefined) ||
+    infoName ||
+    fallback;
+
+  if (!resolvedName && !infoVersion && !infoDescription) {
+    return fallback ? { name: fallback } : null;
+  }
+
+  const result: McpServerInfo = {};
+  if (resolvedName) {
+    result.name = resolvedName;
+  }
+  if (infoVersion) {
+    result.version = infoVersion;
+  }
+  if (infoDescription) {
+    result.description = infoDescription;
+  }
+
+  return result;
 };
 
 type McpExecutionResult = {
@@ -73,11 +139,26 @@ type McpServer = {
   name: string;
   baseUrl: string;
   headersText: string;
+  transportType: McpTransportType;
   isActive: boolean;
 };
 
 type McpSettings = {
   servers: McpServer[];
+};
+
+type McpServerFormState = {
+  name: string;
+  baseUrl: string;
+  headersText: string;
+  transportType: McpTransportType;
+};
+
+const DEFAULT_SERVER_FORM: McpServerFormState = {
+  name: '',
+  baseUrl: '',
+  headersText: '{"Authorization": "Bearer token"}',
+  transportType: 'streamable-http'
 };
 
 const SETTINGS_KEY = 'exception-notify-ai-settings';
@@ -170,23 +251,30 @@ export default function App() {
         if (parsed.baseUrl || parsed.headersText) {
           // Migrate old single server format to new array format
           return {
-            servers: parsed.baseUrl ? [{
-              id: 'migrated-server',
-              name: 'Migrated Server',
-              baseUrl: parsed.baseUrl,
-              headersText: parsed.headersText || '',
-              isActive: true
-            }] : []
+            servers: parsed.baseUrl
+              ? [
+                  {
+                    id: 'migrated-server',
+                    name: 'Migrated Server',
+                    baseUrl: parsed.baseUrl,
+                    headersText: parsed.headersText || '',
+                    transportType: 'streamable-http' as McpTransportType,
+                    isActive: true
+                  }
+                ]
+              : []
           };
         }
         // Handle new array format
         if (Array.isArray(parsed.servers)) {
           return {
-            servers: parsed.servers.map(server => ({
+            servers: parsed.servers.map((server: any) => ({
               id: typeof server.id === 'string' ? server.id : Date.now().toString(),
               name: typeof server.name === 'string' ? server.name : 'Unnamed Server',
               baseUrl: typeof server.baseUrl === 'string' ? server.baseUrl : '',
               headersText: typeof server.headersText === 'string' ? server.headersText : '',
+              transportType:
+                server.transportType === 'sse' ? 'sse' : 'streamable-http',
               isActive: Boolean(server.isActive)
             }))
           };
@@ -214,11 +302,7 @@ export default function App() {
 
   // Server management states
   const [editingServer, setEditingServer] = useState<string | null>(null);
-  const [serverForm, setServerForm] = useState<{ name: string; baseUrl: string; headersText: string }>({
-    name: '',
-    baseUrl: '',
-    headersText: '{"Authorization": "Bearer token"}'
-  });
+  const [serverForm, setServerForm] = useState<McpServerFormState>(() => ({ ...DEFAULT_SERVER_FORM }));
   const [showAddServer, setShowAddServer] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; serverId: string; serverName: string }>({
     show: false,
@@ -308,46 +392,6 @@ export default function App() {
   }, [mcpSettings]);
 
   // Auto load MCP tools when settings change and panel is open
-  useEffect(() => {
-    if (mcpPanelOpen) {
-      const activeServer = mcpSettings.servers.find(server => server.isActive);
-      if (activeServer && activeServer.baseUrl.trim()) {
-        loadMcpTools();
-      }
-    }
-  }, [mcpPanelOpen, mcpSettings.servers]);
-
-  // Sync payload changes to messages
-  useEffect(() => {
-    if (!payload) return;
-
-    const summaryMessage = buildSummaryPrompt(payload);
-    if (summaryMessage) {
-      setMessages(prev => {
-        const summaryIndex = prev.findIndex(
-          msg => msg.role === 'user' && msg.content.startsWith('[异常概览]')
-        );
-        if (summaryIndex === -1) {
-          return prev;
-        }
-        // Update existing summary message
-        const newMessages = [...prev];
-        newMessages[summaryIndex] = {
-          ...newMessages[summaryIndex],
-          content: summaryMessage
-        };
-        return newMessages;
-      });
-    }
-  }, [payload?.codeContext, payload?.stacktrace, payload?.additionalInfo]);
-
-  // Auto scroll to bottom when streaming or new messages arrive
-  useEffect(() => {
-    if (chatWindowRef.current) {
-      chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
-    }
-  }, [messages, streamingContent]);
-
   const toggleCollapsed = (index: number, current: boolean) => {
     setCollapsedMessages(prev => ({
       ...prev,
@@ -389,18 +433,112 @@ export default function App() {
     setStreamingReasoningCollapsed(false);
 
     try {
+      // Check if model is GLM and has available MCP services
+      const isGlmModel = settings.model.toLowerCase().startsWith('glm');
+      const activeServer = mcpSettings.servers.find(server => server.isActive);
+      const hasMcpService = isGlmModel && activeServer && activeServer.baseUrl.trim();
+
+      // Prepare request body
+      const requestBody: any = {
+        model: settings.model,
+        temperature: settings.temperature,
+        stream: true,
+        messages: newMessages.map(message => {
+          const payload: Record<string, unknown> = {
+            role: message.role,
+            content: message.content
+          };
+          if (message.tool_call_id) {
+            payload.tool_call_id = message.tool_call_id;
+          }
+          if (message.tool_calls && message.tool_calls.length > 0) {
+            payload.tool_calls = message.tool_calls;
+          }
+          return payload;
+        })
+      };
+
+      // Add MCP tools if GLM model with MCP service is available
+      if (hasMcpService) {
+        try {
+          // Get available MCP tools
+          let headers: any;
+          if (activeServer.headersText.trim()) {
+            headers = JSON.parse(activeServer.headersText);
+          }
+
+          const mcpResponse = await fetch('/api/mcp/tools/list', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              servers: [
+                {
+                  baseUrl: activeServer.baseUrl,
+                  headers,
+                  name: activeServer.name
+                }
+              ]
+            })
+          });
+
+          const mcpResult = await mcpResponse.json() as {
+            code: number;
+            message?: string;
+            data?: { servers?: McpServerData[] };
+          };
+
+          const serverDataList = mcpResult.data?.servers ?? [];
+          const serverData =
+            serverDataList.find(
+              item => item.name && activeServer.name && item.name === activeServer.name
+            ) ?? serverDataList[0];
+          if (serverData?.error) {
+            console.warn('MCP server responded with an error:', serverData.error);
+          }
+
+          if (mcpResult.code === 0 && serverData && !serverData.error && serverData.tools && serverData.tools.length > 0) {
+            console.log('🛠️ Found MCP tools:', serverData.tools.map(t => t.name));
+
+            // Transform MCP tools to GLM MCP tool schema
+            const transportType: McpTransportType = activeServer.transportType ?? 'streamable-http';
+            const toolHeaders =
+              headers && typeof headers === 'object' && Object.keys(headers).length > 0
+                ? headers
+                : undefined;
+            const mcpTools = serverData.tools.map(tool => ({
+              type: 'mcp',
+              mcp: {
+                server_label: serverData.name ?? activeServer.name,
+                server_url: activeServer.baseUrl,
+                transport_type: transportType,
+                allowed_tools: [tool.name],
+                ...(toolHeaders ? { headers: toolHeaders } : {})
+              }
+            }));
+
+            console.log('🔧 Transformed MCP tools for GLM:', JSON.stringify(mcpTools, null, 2));
+
+            // Add MCP tools to request
+            requestBody.tools = mcpTools;
+            requestBody.tool_choice = 'auto';
+
+            console.log('📤 Enhanced GLM request with MCP tools');
+          }
+        } catch (error) {
+          console.warn('Failed to load MCP tools for GLM request:', error);
+          // Continue without MCP tools if loading fails
+        }
+      }
+
       const response = await fetch(settings.endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${settings.apiKey}`
         },
-        body: JSON.stringify({
-          model: settings.model,
-          temperature: settings.temperature,
-          stream: true,
-          messages: newMessages.map(({ role, content }) => ({ role, content }))
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -417,6 +555,7 @@ export default function App() {
       let buffer = '';
       let accumulatedContent = '';
       let accumulatedReasoning = '';
+      let accumulatedToolCalls: any[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -435,15 +574,47 @@ export default function App() {
             const jsonStr = trimmed.slice(6);
             const parsed = JSON.parse(jsonStr);
             const delta = parsed?.choices?.[0]?.delta;
-            
+
             if (delta?.content) {
               accumulatedContent += delta.content;
               setStreamingContent(accumulatedContent);
             }
-            
+
             if (delta?.reasoning_content) {
               accumulatedReasoning += delta.reasoning_content;
               setStreamingReasoning(accumulatedReasoning);
+            }
+
+            // Handle tool calls for GLM models
+            if (delta?.tool_calls) {
+              console.log('Received tool_calls delta:', delta.tool_calls);
+              delta.tool_calls.forEach((toolCall: any, index: number) => {
+                console.log(`Processing tool call ${index}:`, toolCall);
+                if (!accumulatedToolCalls[index]) {
+                  accumulatedToolCalls[index] = {
+                    id: toolCall.id || '',
+                    type: toolCall.type || 'mcp',
+                    mcp: toolCall.mcp || {},
+                    function: toolCall.function || null
+                  };
+                } else {
+                  // Update existing tool call
+                  if (toolCall.id) accumulatedToolCalls[index].id = toolCall.id;
+                  if (toolCall.type) accumulatedToolCalls[index].type = toolCall.type;
+                  if (toolCall.mcp) {
+                    accumulatedToolCalls[index].mcp = {
+                      ...accumulatedToolCalls[index].mcp,
+                      ...toolCall.mcp
+                    };
+                  }
+                  if (toolCall.function) {
+                    accumulatedToolCalls[index].function = {
+                      ...accumulatedToolCalls[index].function,
+                      ...toolCall.function
+                    };
+                  }
+                }
+              });
             }
           } catch (err) {
             console.warn('Failed to parse SSE line', trimmed, err);
@@ -451,33 +622,40 @@ export default function App() {
         }
       }
 
-      if (!accumulatedContent) {
-        throw new Error('接口返回内容为空，请检查模型与消息体。');
-      }
+      // Handle tool calls if present
+      if (accumulatedToolCalls.length > 0) {
+        // Execute MCP tools and continue conversation
+        await handleToolCalls(accumulatedToolCalls, newMessages, accumulatedContent, accumulatedReasoning);
+      } else {
+        // Regular response without tools
+        if (!accumulatedContent) {
+          throw new Error('接口返回内容为空，请检查模型与消息体。');
+        }
 
-      const newMessage: ChatMessage = {
-        role: 'assistant',
-        content: accumulatedContent
-      };
-      if (accumulatedReasoning) {
-        newMessage.reasoning = accumulatedReasoning;
-      }
+        const newMessage: ChatMessage = {
+          role: 'assistant',
+          content: accumulatedContent
+        };
+        if (accumulatedReasoning) {
+          newMessage.reasoning = accumulatedReasoning;
+        }
 
-      setMessages(prev => [...prev, newMessage]);
-      setCollapsedMessages(prev => {
-        const next = { ...prev };
-        next[newMessages.length] = false;
-        return next;
-      });
-      if (accumulatedReasoning) {
-        setReasoningCollapsed(prev => {
+        setMessages(prev => [...prev, newMessage]);
+        setCollapsedMessages(prev => {
           const next = { ...prev };
-          next[newMessages.length] = true; // Default to collapsed
+          next[newMessages.length] = false;
           return next;
         });
+        if (accumulatedReasoning) {
+          setReasoningCollapsed(prev => {
+            const next = { ...prev };
+            next[newMessages.length] = true; // Default to collapsed
+            return next;
+          });
+        }
+        setStreamingContent('');
+        setStreamingReasoning('');
       }
-      setStreamingContent('');
-      setStreamingReasoning('');
     } catch (error) {
       console.error('Failed to call AI endpoint', error);
       setSendError(
@@ -488,6 +666,151 @@ export default function App() {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleToolCalls = async (
+    toolCalls: any[],
+    conversationMessages: ChatMessage[],
+    assistantContent: string,
+    assistantReasoning?: string
+  ) => {
+    const activeServer = mcpSettings.servers.find(server => server.isActive);
+    if (!activeServer) {
+      setSendError('没有激活的 MCP 服务器来处理工具调用');
+      return;
+    }
+
+    const toolCallsForHistory: ToolCall[] = toolCalls.map((toolCall: any) => {
+      const sanitized: ToolCall = {
+        id: typeof toolCall.id === 'string' ? toolCall.id : undefined,
+        type: typeof toolCall.type === 'string' ? toolCall.type : undefined
+      };
+      if (toolCall.mcp && typeof toolCall.mcp === 'object') {
+        sanitized.mcp = { ...(toolCall.mcp as Record<string, unknown>) };
+      }
+      if (toolCall.function && typeof toolCall.function === 'object') {
+        sanitized.function = { ...(toolCall.function as Record<string, unknown>) };
+      }
+      return sanitized;
+    });
+
+    // Add assistant message with tool calls
+    const assistantMessage: ChatMessage = {
+      role: 'assistant',
+      content: assistantContent || '我正在使用工具来帮助分析这个问题...',
+      reasoning: assistantReasoning,
+      tool_calls: toolCallsForHistory
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
+    // Execute each tool call
+    const toolResults: any[] = [];
+    for (const toolCall of toolCalls) {
+      try {
+        console.log('Executing tool call:', JSON.stringify(toolCall, null, 2));
+
+        let headers: any;
+        if (activeServer.headersText.trim()) {
+          headers = JSON.parse(activeServer.headersText);
+        }
+
+        // Extract tool name and arguments based on GLM's response format
+        let toolName: string | undefined;
+        let toolArgs: any;
+
+        if (toolCall.mcp) {
+          // GLM MCP format
+          toolName = toolCall.mcp.name;
+          toolArgs = toolCall.mcp.arguments;
+        } else if (toolCall.function) {
+          // OpenAI function format
+          toolName = toolCall.function.name;
+          toolArgs = toolCall.function.arguments;
+        }
+
+        console.log('Extracted tool name:', toolName);
+        console.log('Extracted tool args:', toolArgs);
+
+        if (!toolName) {
+          throw new Error('Tool name not found in tool call response');
+        }
+
+        const requestBody = {
+          baseUrl: activeServer.baseUrl,
+          headers,
+          name: toolName,
+          arguments: toolArgs
+        };
+
+        console.log('MCP execute request body:', JSON.stringify(requestBody, null, 2));
+
+        const response = await fetch('/api/mcp/tools/execute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('MCP execute API error:', response.status, errorText);
+          throw new Error(`MCP API error ${response.status}: ${errorText}`);
+        }
+
+        const result = await response.json() as { code: number; message?: string; data?: { content: unknown[]; plainText: string | null; structuredContent: unknown | null; isError: boolean; server: McpServerInfo } };
+
+        console.log('MCP execute response:', JSON.stringify(result, null, 2));
+
+        if (result.code === 0) {
+          toolResults.push({
+            tool_call_id: toolCall.id,
+            role: 'tool',
+            content: JSON.stringify({
+              success: true,
+              result: result.data?.plainText || result.data?.structuredContent,
+              server: result.data?.server?.name
+            })
+          });
+        } else {
+          console.error('MCP tool execution failed:', result.message);
+          toolResults.push({
+            tool_call_id: toolCall.id,
+            role: 'tool',
+            content: JSON.stringify({
+              success: false,
+              error: result.message || '工具执行失败'
+            })
+          });
+        }
+      } catch (error) {
+        console.error('Failed to execute MCP tool:', error);
+        toolResults.push({
+          tool_call_id: toolCall.id,
+          role: 'tool',
+          content: JSON.stringify({
+            success: false,
+            error: error instanceof Error ? error.message : '工具执行出现异常'
+          })
+        });
+      }
+    }
+
+    // Continue conversation with tool results
+    const messagesWithTools = [
+      ...conversationMessages,
+      assistantMessage,
+      ...toolResults.map(result => ({
+        role: result.role as 'tool',
+        content: result.content,
+        tool_call_id: result.tool_call_id
+      }))
+    ];
+
+    console.log('🔄 Sending tool results back to GLM:', messagesWithTools.length, 'messages');
+
+    // Send messages with tool results back to GLM model
+    await sendMessage('', messagesWithTools, true);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -585,7 +908,7 @@ export default function App() {
     setAdditionalInfoDraft('');
   };
 
-  const loadMcpTools = async () => {
+  const loadMcpTools = useCallback(async () => {
     const activeServer = mcpSettings.servers.find(server => server.isActive);
     if (!activeServer || !activeServer.baseUrl.trim()) {
       setMcpError('请先配置并激活一个 MCP 服务器');
@@ -622,18 +945,36 @@ export default function App() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          baseUrl: activeServer.baseUrl,
-          headers
+          servers: [
+            {
+              baseUrl: activeServer.baseUrl,
+              headers,
+              name: activeServer.name
+            }
+          ]
         })
       });
 
-      const result = await response.json() as { code: number; message?: string; data?: { tools: McpTool[]; server: McpServerInfo } };
-      if (result.code !== 0) {
+      const result = await response.json() as {
+        code: number;
+        message?: string;
+        data?: { servers?: McpServerData[] };
+      };
+      const serverDataList = result.data?.servers ?? [];
+      const serverData =
+        serverDataList.find(
+          item => item.name && activeServer.name && item.name === activeServer.name
+        ) ?? serverDataList[0];
+      if (serverData?.error) {
+        throw new Error(serverData.error);
+      }
+
+      if (result.code !== 0 || !serverData) {
         throw new Error(result.message || 'Failed to load MCP tools');
       }
 
-      setMcpTools(result.data!.tools);
-      setMcpServerInfo(result.data!.server);
+      setMcpTools(serverData.tools ?? []);
+      setMcpServerInfo(extractServerInfo(serverData, activeServer.name));
 
       // Set server status to connected when tools are successfully loaded
       setServerConnectionStatus(prev => ({
@@ -652,7 +993,47 @@ export default function App() {
     } finally {
       setMcpLoading(false);
     }
-  };
+  }, [mcpSettings]);
+
+  useEffect(() => {
+    if (mcpPanelOpen) {
+      const activeServer = mcpSettings.servers.find(server => server.isActive);
+      if (activeServer && activeServer.baseUrl.trim()) {
+        loadMcpTools();
+      }
+    }
+  }, [mcpPanelOpen, mcpSettings.servers, loadMcpTools]);
+
+  // Sync payload changes to messages
+  useEffect(() => {
+    if (!payload) return;
+
+    const summaryMessage = buildSummaryPrompt(payload);
+    if (summaryMessage) {
+      setMessages(prev => {
+        const summaryIndex = prev.findIndex(
+          msg => msg.role === 'user' && msg.content.startsWith('[异常概览]')
+        );
+        if (summaryIndex === -1) {
+          return prev;
+        }
+        // Update existing summary message
+        const newMessages = [...prev];
+        newMessages[summaryIndex] = {
+          ...newMessages[summaryIndex],
+          content: summaryMessage
+        };
+        return newMessages;
+      });
+    }
+  }, [payload]);
+
+  // Auto scroll to bottom when streaming or new messages arrive
+  useEffect(() => {
+    if (chatWindowRef.current) {
+      chatWindowRef.current.scrollTop = chatWindowRef.current.scrollHeight;
+    }
+  }, [messages, streamingContent]);
 
   const executeMcpTool = async () => {
     if (!mcpSelectedTool) {
@@ -736,6 +1117,7 @@ export default function App() {
       name: serverForm.name.trim(),
       baseUrl: serverForm.baseUrl.trim(),
       headersText: serverForm.headersText.trim(),
+      transportType: serverForm.transportType,
       isActive: true // Always activate new server by default
     };
 
@@ -764,7 +1146,7 @@ export default function App() {
     setMcpResult(null);
     setMcpError(null);
 
-    setServerForm({ name: '', baseUrl: '', headersText: '' });
+    setServerForm({ ...DEFAULT_SERVER_FORM });
     setShowAddServer(false);
 
     // Auto load tools for the new server after a short delay
@@ -786,13 +1168,14 @@ export default function App() {
               ...server,
               name: serverForm.name.trim(),
               baseUrl: serverForm.baseUrl.trim(),
-              headersText: serverForm.headersText.trim()
+              headersText: serverForm.headersText.trim(),
+              transportType: serverForm.transportType
             }
           : server
       )
     }));
 
-    setServerForm({ name: '', baseUrl: '', headersText: '' });
+    setServerForm({ ...DEFAULT_SERVER_FORM });
     setEditingServer(null);
   };
 
@@ -875,13 +1258,14 @@ export default function App() {
     setServerForm({
       name: server.name,
       baseUrl: server.baseUrl,
-      headersText: server.headersText
+      headersText: server.headersText,
+      transportType: server.transportType
     });
   };
 
   const cancelEdit = () => {
     setEditingServer(null);
-    setServerForm({ name: '', baseUrl: '', headersText: '' });
+    setServerForm({ ...DEFAULT_SERVER_FORM });
     setShowAddServer(false);
   };
 
@@ -1205,7 +1589,7 @@ export default function App() {
                 </pre>
               ) : (
                 <p className="empty-hint">
-                  点击"添加"按钮补充其他信息（如 pom.xml 依赖、配置文件等），帮助 AI 更准确地分析问题。
+                  点击&nbsp;&quot;添加&quot;&nbsp;按钮补充其他信息（如 pom.xml 依赖、配置文件等），帮助 AI 更准确地分析问题。
                 </p>
               )}
             </section>
@@ -1461,7 +1845,9 @@ export default function App() {
 
               {mcpSettings.servers.length === 0 ? (
                 <div className="empty-servers">
-                  <p>尚未配置任何 MCP 服务器。点击"添加服务器"开始配置。</p>
+                  <p>
+                    尚未配置任何 MCP 服务器。点击&nbsp;&quot;添加服务器&quot;&nbsp;开始配置。
+                  </p>
                 </div>
               ) : (
                 <div className="servers-list">
@@ -1505,6 +1891,7 @@ export default function App() {
                         </div>
                         <div className="server-details">
                           <span className="server-url">{server.baseUrl}</span>
+                          <span className="server-transport">传输方式：{server.transportType}</span>
                         </div>
                       </div>
 
@@ -1528,6 +1915,21 @@ export default function App() {
                                 onChange={(e) => setServerForm(prev => ({ ...prev, baseUrl: e.target.value }))}
                                 placeholder="https://your-mcp-server.com"
                               />
+                            </label>
+                            <label>
+                              传输方式
+                              <select
+                                value={serverForm.transportType}
+                                onChange={(e) =>
+                                  setServerForm(prev => ({
+                                    ...prev,
+                                    transportType: (e.target.value as McpTransportType)
+                                  }))
+                                }
+                              >
+                                <option value="streamable-http">streamable-http</option>
+                                <option value="sse">sse</option>
+                              </select>
                             </label>
                             <label className="full-width">
                               请求头（JSON 格式）
@@ -1597,6 +1999,21 @@ export default function App() {
                         onChange={(e) => setServerForm(prev => ({ ...prev, baseUrl: e.target.value }))}
                         placeholder="https://your-mcp-server.com"
                       />
+                    </label>
+                    <label>
+                      传输方式
+                      <select
+                        value={serverForm.transportType}
+                        onChange={(e) =>
+                          setServerForm(prev => ({
+                            ...prev,
+                            transportType: (e.target.value as McpTransportType)
+                          }))
+                        }
+                      >
+                        <option value="streamable-http">streamable-http</option>
+                        <option value="sse">sse</option>
+                      </select>
                     </label>
                     <label className="full-width">
                       请求头（JSON 格式）
@@ -1781,7 +2198,10 @@ export default function App() {
                     <h3>⚠️ 确认删除</h3>
                   </div>
                   <div className="confirm-body">
-                    <p>确定要删除服务器 <strong>"{deleteConfirm.serverName}"</strong> 吗？</p>
+                    <p>
+                      确定要删除服务器{' '}
+                      <strong>&quot;{deleteConfirm.serverName}&quot;</strong> 吗？
+                    </p>
                     <p className="confirm-warning">此操作不可恢复，请谨慎操作。</p>
                   </div>
                   <div className="confirm-actions">
