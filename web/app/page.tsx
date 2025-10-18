@@ -123,6 +123,123 @@ const extractServerInfo = (server?: McpServerData, fallbackName?: string): McpSe
   return result;
 };
 
+const tryParseJson = (value: string): { success: boolean; data?: unknown } => {
+  try {
+    return { success: true, data: JSON.parse(value) };
+  } catch {
+    return { success: false };
+  }
+};
+
+const parseKeyValueLikeString = (value: string): Record<string, unknown> | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const hasBraces =
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'));
+
+  // Only attempt simple key=value parsing for object-like strings
+  if (!hasBraces || !trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    return undefined;
+  }
+
+  const inner = trimmed.slice(1, -1);
+  const parts = inner.split(/[,;\n]+/).map(part => part.trim()).filter(Boolean);
+  if (parts.length === 0) {
+    return undefined;
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const part of parts) {
+    const separator = part.includes('=') ? '=' : part.includes(':') ? ':' : null;
+    if (!separator) {
+      continue;
+    }
+    const [rawKey, ...rawValueParts] = part.split(separator);
+    if (!rawKey || rawValueParts.length === 0) {
+      continue;
+    }
+    const key = rawKey.trim().replace(/^['"]|['"]$/g, '');
+    if (!key) {
+      continue;
+    }
+    const rawValue = rawValueParts.join(separator).trim();
+    if (!rawValue) {
+      continue;
+    }
+
+    const normalizedValue =
+      rawValue === 'null'
+        ? null
+        : rawValue === 'undefined'
+          ? undefined
+          : /^true$/i.test(rawValue)
+            ? true
+            : /^false$/i.test(rawValue)
+              ? false
+              : !Number.isNaN(Number(rawValue))
+                ? Number(rawValue)
+                : rawValue.replace(/^['"]|['"]$/g, '');
+
+    result[key] = normalizedValue;
+  }
+
+  return Object.keys(result).length > 0 ? result : undefined;
+};
+
+const normalizeToolArguments = (value: unknown): unknown => {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return undefined;
+    }
+
+    const direct = tryParseJson(trimmed);
+    if (direct.success) {
+      return direct.data;
+    }
+
+    // Attempt to coerce common JSON-like strings such as "{key=value}"
+    const jsonLikeAttempt = tryParseJson(
+      trimmed
+        .replace(/([{\[,]\s*)([A-Za-z0-9_]+)\s*=/g, '$1"$2":')
+        .replace(/([{\[,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":')
+        .replace(/'/g, '"')
+    );
+    if (jsonLikeAttempt.success) {
+      return jsonLikeAttempt.data;
+    }
+
+    const kvObject = parseKeyValueLikeString(trimmed);
+    if (kvObject) {
+      return kvObject;
+    }
+
+    return trimmed;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => normalizeToolArguments(item));
+  }
+
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+      key,
+      normalizeToolArguments(item)
+    ]);
+    return Object.fromEntries(entries);
+  }
+
+  return value;
+};
+
 type McpExecutionResult = {
   toolName: string;
   toolTitle: string;
@@ -507,24 +624,38 @@ export default function App() {
               headers && typeof headers === 'object' && Object.keys(headers).length > 0
                 ? headers
                 : undefined;
-            const mcpTools = serverData.tools.map(tool => ({
-              type: 'mcp',
-              mcp: {
-                server_label: serverData.name ?? activeServer.name,
-                server_url: activeServer.baseUrl,
-                transport_type: transportType,
-                allowed_tools: [tool.name],
-                ...(toolHeaders ? { headers: toolHeaders } : {})
-              }
-            }));
+            const allowedTools = serverData.tools
+              .map(tool => tool.name)
+              .filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+
+            if (allowedTools.length === 0) {
+              console.warn('No valid MCP tool names found for server:', serverData.name ?? activeServer.name);
+            }
+
+            const mcpTools = allowedTools.length > 0
+              ? [
+                  {
+                    type: 'mcp',
+                    mcp: {
+                      server_label: serverData.name ?? activeServer.name,
+                      server_url: activeServer.baseUrl,
+                      transport_type: transportType,
+                      allowed_tools: allowedTools,
+                      ...(toolHeaders ? { headers: toolHeaders } : {})
+                    }
+                  }
+                ]
+              : [];
 
             console.log('🔧 Transformed MCP tools for GLM:', JSON.stringify(mcpTools, null, 2));
 
-            // Add MCP tools to request
-            requestBody.tools = mcpTools;
-            requestBody.tool_choice = 'auto';
+            if (mcpTools.length > 0) {
+              // Add MCP tools to request
+              requestBody.tools = mcpTools;
+              requestBody.tool_choice = 'auto';
 
-            console.log('📤 Enhanced GLM request with MCP tools');
+              console.log('📤 Enhanced GLM request with MCP tools');
+            }
           }
         } catch (error) {
           console.warn('Failed to load MCP tools for GLM request:', error);
@@ -681,17 +812,58 @@ export default function App() {
     }
 
     const toolCallsForHistory: ToolCall[] = toolCalls.map((toolCall: any) => {
-      const sanitized: ToolCall = {
+      const historyCall: ToolCall = {
         id: typeof toolCall.id === 'string' ? toolCall.id : undefined,
         type: typeof toolCall.type === 'string' ? toolCall.type : undefined
       };
       if (toolCall.mcp && typeof toolCall.mcp === 'object') {
-        sanitized.mcp = { ...(toolCall.mcp as Record<string, unknown>) };
+        const rawArguments = (toolCall.mcp as Record<string, unknown>).arguments;
+        const mcpHistory: Record<string, unknown> = { ...(toolCall.mcp as Record<string, unknown>) };
+        if (rawArguments !== undefined && typeof rawArguments !== 'string') {
+          try {
+            mcpHistory.arguments = JSON.stringify(rawArguments);
+          } catch {
+            mcpHistory.arguments = String(rawArguments);
+          }
+        }
+        historyCall.mcp = mcpHistory;
       }
       if (toolCall.function && typeof toolCall.function === 'object') {
-        sanitized.function = { ...(toolCall.function as Record<string, unknown>) };
+        const rawArguments = (toolCall.function as Record<string, unknown>).arguments;
+        const fnHistory: Record<string, unknown> = { ...(toolCall.function as Record<string, unknown>) };
+        if (rawArguments !== undefined && typeof rawArguments !== 'string') {
+          try {
+            fnHistory.arguments = JSON.stringify(rawArguments);
+          } catch {
+            fnHistory.arguments = String(rawArguments);
+          }
+        }
+        historyCall.function = fnHistory;
       }
-      return sanitized;
+      return historyCall;
+    });
+
+    const normalizedToolCalls = toolCalls.map((toolCall: any) => {
+      const normalized: any = {
+        ...toolCall
+      };
+      if (normalized.mcp && typeof normalized.mcp === 'object') {
+        normalized.mcp = {
+          ...(normalized.mcp as Record<string, unknown>),
+          arguments: normalizeToolArguments(
+            (normalized.mcp as Record<string, unknown>).arguments
+          )
+        };
+      }
+      if (normalized.function && typeof normalized.function === 'object') {
+        normalized.function = {
+          ...(normalized.function as Record<string, unknown>),
+          arguments: normalizeToolArguments(
+            (normalized.function as Record<string, unknown>).arguments
+          )
+        };
+      }
+      return normalized;
     });
 
     // Add assistant message with tool calls
@@ -705,13 +877,26 @@ export default function App() {
 
     // Execute each tool call
     const toolResults: any[] = [];
-    for (const toolCall of toolCalls) {
+    for (const toolCall of normalizedToolCalls) {
       try {
         console.log('Executing tool call:', JSON.stringify(toolCall, null, 2));
 
         let headers: any;
         if (activeServer.headersText.trim()) {
           headers = JSON.parse(activeServer.headersText);
+        }
+
+        if (toolCall.mcp?.type === 'mcp_list_tools') {
+          toolResults.push({
+            tool_call_id: toolCall.id,
+            role: 'tool',
+            content: JSON.stringify({
+              success: true,
+              tools: toolCall.mcp.tools ?? mcpTools,
+              server: toolCall.mcp.server_label ?? activeServer.name
+            })
+          });
+          continue;
         }
 
         // Extract tool name and arguments based on GLM's response format
@@ -735,12 +920,18 @@ export default function App() {
           throw new Error('Tool name not found in tool call response');
         }
 
-        const requestBody = {
+        const normalizedArguments = normalizeToolArguments(toolArgs);
+        console.log('Normalized tool args:', normalizedArguments);
+
+        const requestBody: Record<string, unknown> = {
           baseUrl: activeServer.baseUrl,
           headers,
-          name: toolName,
-          arguments: toolArgs
+          name: toolName
         };
+
+        if (normalizedArguments !== undefined) {
+          requestBody.arguments = normalizedArguments;
+        }
 
         console.log('MCP execute request body:', JSON.stringify(requestBody, null, 2));
 
