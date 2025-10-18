@@ -1,6 +1,6 @@
 'use client';
 
-import {FormEvent, useEffect, useMemo, useRef, useState} from 'react';
+import {FormEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ungzip} from 'pako';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -43,7 +43,45 @@ type ClientSettings = {
   systemPrompt: string;
 };
 
+type McpTool = {
+  name: string;
+  title: string;
+  description: string;
+  inputSchema?: unknown;
+  outputSchema?: unknown;
+};
+
+type McpServerInfo = {
+  name?: string;
+  version?: string;
+  description?: string;
+};
+
+type McpExecutionResult = {
+  toolName: string;
+  toolTitle: string;
+  plainText: string | null;
+  structuredContent: unknown | null;
+  content: unknown[];
+  isError: boolean;
+  executedAt: string;
+  server?: McpServerInfo | null;
+};
+
+type McpServer = {
+  id: string;
+  name: string;
+  baseUrl: string;
+  headersText: string;
+  isActive: boolean;
+};
+
+type McpSettings = {
+  servers: McpServer[];
+};
+
 const SETTINGS_KEY = 'exception-notify-ai-settings';
+const MCP_SETTINGS_KEY = 'exception-notify-mcp-settings';
 
 const defaultSystemPrompt =
   '你是一个资深 Java/Spring 工程师，擅长分析异常堆栈并提供修复建议。请结合提供的上下文，输出简洁明确、可执行的建议。';
@@ -54,6 +92,10 @@ const defaultSettings: ClientSettings = {
   model: 'gpt-4o-mini',
   temperature: 0.2,
   systemPrompt: defaultSystemPrompt
+};
+
+const defaultMcpSettings: McpSettings = {
+  servers: []
 };
 
 const DEMO_PAYLOAD = 'H4sIAAAAAAAAAK1UTW8TMRD9K8OeUqnZ7KZJPxa1UBWQeuiHINxycbyT1NRrL7Y3tKp658IRceAENy4gLgjK36HQn8HYu6GhpUJCnHY98-bpjf1mTiJWlruswCiLCiZlW5scTduimQqO0WKEaiqMVgUqR5DS6JyCmvPKGFQcByKUdpNuv52k7bQ_SJMs6Wdp19cecSyd0GpwXHrUEzZlsWRqEu9WUu5roRya-zPQfMEOWssmvub8-evzr2cX79-ev3j5_dWn-uf8w5eLj2--fT778e6MyqTmLDBkEddF7PuIQx9x00e850-PmgM3yByGUOu3hNeXpb3VBeK0jvFDZxj_u_AMtphS2oFQU32IMIwCazxBt-2wsK2FYQQj5KyyPhmUUURYUMQ2VEPHHPwf4X8mGzPO8obrQf1vq1Eh3BxVEw9M_d6MyFYqNjiWyF28S3c8xR10Bzrf5JxeSJvtopRx3XbSqgFQI_6BoXVjPqha7l5r7xmOYq6VM1pK6jM0snV5LiU931yPc6nAuLriX5rrHH0Gj7zD014XIKAhXB6s19-H-LRC63ZoXKjc6fvKCXfcMnV44fZQpb0lgCmTIv_1SKGyzvUAOJO8kpTcN7rQ3jnzgD6A_ywDdDow2Lu3l8EBU7nE4JJGDDIjBbmHgCsAUk_iHEfVpDWMNke6cuA0kDwrrKsLMjg5HUaLTfWt9ZrrTn0OBs1bC5CRK4MVIy9lY2MDyEsw67vUVjhtjmPLpjiveA3AOs0PZy6kMTxs6SvWD9B-AmDQVUbVpBSjiw_TtZ3TpYe_tl8u7aXxWjfnLO0ma6MZ5rGRBDpwrrRZpxNCMR4xcgbNhC46Iu_czMAqspOJspNI1WtuU5JY2DrAsHEKJjw5k2HAKHh3jtnvFmbdli5oWK6uumSQrGVL3SxNCTYWEps1em0yPYtQuFsVIyQhdLfedJ7ycs2NxVHWvFJjIbJHY4B6T0Bjtej09CfuTiRZtQUAAA';
@@ -116,6 +158,73 @@ export default function App() {
   const [codeContextDraft, setCodeContextDraft] = useState('');
   const [stacktraceDraft, setStacktraceDraft] = useState('');
   const [additionalInfoDraft, setAdditionalInfoDraft] = useState('');
+  const [mcpSettings, setMcpSettings] = useState<McpSettings>(() => {
+    if (typeof window === 'undefined') {
+      return defaultMcpSettings;
+    }
+    try {
+      const raw = localStorage.getItem(MCP_SETTINGS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Handle migration from old format
+        if (parsed.baseUrl || parsed.headersText) {
+          // Migrate old single server format to new array format
+          return {
+            servers: parsed.baseUrl ? [{
+              id: 'migrated-server',
+              name: 'Migrated Server',
+              baseUrl: parsed.baseUrl,
+              headersText: parsed.headersText || '',
+              isActive: true
+            }] : []
+          };
+        }
+        // Handle new array format
+        if (Array.isArray(parsed.servers)) {
+          return {
+            servers: parsed.servers.map(server => ({
+              id: typeof server.id === 'string' ? server.id : Date.now().toString(),
+              name: typeof server.name === 'string' ? server.name : 'Unnamed Server',
+              baseUrl: typeof server.baseUrl === 'string' ? server.baseUrl : '',
+              headersText: typeof server.headersText === 'string' ? server.headersText : '',
+              isActive: Boolean(server.isActive)
+            }))
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load MCP settings', error);
+    }
+    return defaultMcpSettings;
+  });
+  const [mcpPanelOpen, setMcpPanelOpen] = useState(false);
+  const [mcpLoading, setMcpLoading] = useState(false);
+  const [mcpExecuting, setMcpExecuting] = useState(false);
+  const [mcpTools, setMcpTools] = useState<McpTool[]>([]);
+  const [mcpServerInfo, setMcpServerInfo] = useState<McpServerInfo | null>(null);
+  const [mcpSelectedTool, setMcpSelectedTool] = useState('');
+  const [mcpArgumentsText, setMcpArgumentsText] = useState('{}');
+  const [mcpResult, setMcpResult] = useState<McpExecutionResult | null>(null);
+  const [mcpError, setMcpError] = useState<string | null>(null);
+  const [mcpHeadersError, setMcpHeadersError] = useState<string | null>(null);
+  const [mcpArgumentError, setMcpArgumentError] = useState<string | null>(null);
+
+  // Server connection status tracking
+  const [serverConnectionStatus, setServerConnectionStatus] = useState<Record<string, 'connected' | 'disconnected' | 'loading'>>({});
+
+  // Server management states
+  const [editingServer, setEditingServer] = useState<string | null>(null);
+  const [serverForm, setServerForm] = useState<{ name: string; baseUrl: string; headersText: string }>({
+    name: '',
+    baseUrl: '',
+    headersText: '{"Authorization": "Bearer token"}'
+  });
+  const [showAddServer, setShowAddServer] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; serverId: string; serverName: string }>({
+    show: false,
+    serverId: '',
+    serverName: ''
+  });
 
   useEffect(() => {
     const resolvePayload = async () => {
@@ -190,6 +299,23 @@ export default function App() {
       return newMessages;
     });
   }, [settings]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    localStorage.setItem(MCP_SETTINGS_KEY, JSON.stringify(mcpSettings));
+  }, [mcpSettings]);
+
+  // Auto load MCP tools when settings change and panel is open
+  useEffect(() => {
+    if (mcpPanelOpen) {
+      const activeServer = mcpSettings.servers.find(server => server.isActive);
+      if (activeServer && activeServer.baseUrl.trim()) {
+        loadMcpTools();
+      }
+    }
+  }, [mcpPanelOpen, mcpSettings.servers]);
 
   // Sync payload changes to messages
   useEffect(() => {
@@ -459,6 +585,306 @@ export default function App() {
     setAdditionalInfoDraft('');
   };
 
+  const loadMcpTools = async () => {
+    const activeServer = mcpSettings.servers.find(server => server.isActive);
+    if (!activeServer || !activeServer.baseUrl.trim()) {
+      setMcpError('请先配置并激活一个 MCP 服务器');
+      return;
+    }
+
+    setMcpLoading(true);
+    setMcpError(null);
+
+    // Set server status to loading
+    setServerConnectionStatus(prev => ({
+      ...prev,
+      [activeServer.id]: 'loading'
+    }));
+
+    try {
+      let headers;
+      if (activeServer.headersText.trim()) {
+        try {
+          headers = JSON.parse(activeServer.headersText);
+        } catch (error) {
+          setMcpError('请求头格式错误，请输入有效的 JSON');
+          setServerConnectionStatus(prev => ({
+            ...prev,
+            [activeServer.id]: 'disconnected'
+          }));
+          return;
+        }
+      }
+
+      const response = await fetch('/api/mcp/tools/list', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          baseUrl: activeServer.baseUrl,
+          headers
+        })
+      });
+
+      const result = await response.json() as { code: number; message?: string; data?: { tools: McpTool[]; server: McpServerInfo } };
+      if (result.code !== 0) {
+        throw new Error(result.message || 'Failed to load MCP tools');
+      }
+
+      setMcpTools(result.data!.tools);
+      setMcpServerInfo(result.data!.server);
+
+      // Set server status to connected when tools are successfully loaded
+      setServerConnectionStatus(prev => ({
+        ...prev,
+        [activeServer.id]: 'connected'
+      }));
+    } catch (error) {
+      console.error('Failed to load MCP tools', error);
+      setMcpError(error instanceof Error ? error.message : '加载 MCP 工具失败');
+
+      // Set server status to disconnected on error
+      setServerConnectionStatus(prev => ({
+        ...prev,
+        [activeServer.id]: 'disconnected'
+      }));
+    } finally {
+      setMcpLoading(false);
+    }
+  };
+
+  const executeMcpTool = async () => {
+    if (!mcpSelectedTool) {
+      setMcpError('请选择要执行的工具');
+      return;
+    }
+
+    const activeServer = mcpSettings.servers.find(server => server.isActive);
+    if (!activeServer) {
+      setMcpError('没有激活的 MCP 服务器');
+      return;
+    }
+
+    setMcpExecuting(true);
+    setMcpError(null);
+
+    try {
+      let headers;
+      if (activeServer.headersText.trim()) {
+        headers = JSON.parse(activeServer.headersText);
+      }
+
+      let argumentsObj;
+      if (mcpArgumentsText.trim()) {
+        try {
+          argumentsObj = JSON.parse(mcpArgumentsText);
+        } catch (error) {
+          setMcpArgumentError('参数格式错误，请输入有效的 JSON');
+          return;
+        }
+      }
+
+      const response = await fetch('/api/mcp/tools/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          baseUrl: activeServer.baseUrl,
+          headers,
+          name: mcpSelectedTool,
+          arguments: argumentsObj
+        })
+      });
+
+      const result = await response.json() as { code: number; message?: string; data?: { content: unknown[]; plainText: string | null; structuredContent: unknown | null; isError: boolean; server: McpServerInfo } };
+      if (result.code !== 0) {
+        throw new Error(result.message || 'Failed to execute MCP tool');
+      }
+
+      const executionResult: McpExecutionResult = {
+        toolName: mcpSelectedTool,
+        toolTitle: mcpTools.find(t => t.name === mcpSelectedTool)?.title || mcpSelectedTool,
+        plainText: result.data!.plainText,
+        structuredContent: result.data!.structuredContent,
+        content: result.data!.content,
+        isError: result.data!.isError,
+        executedAt: new Date().toISOString(),
+        server: result.data!.server
+      };
+
+      setMcpResult(executionResult);
+      setMcpArgumentError(null);
+    } catch (error) {
+      console.error('Failed to execute MCP tool', error);
+      setMcpError(error instanceof Error ? error.message : '执行 MCP 工具失败');
+    } finally {
+      setMcpExecuting(false);
+    }
+  };
+
+  // Server management functions
+  const addServer = () => {
+    if (!serverForm.name.trim() || !serverForm.baseUrl.trim()) {
+      return;
+    }
+
+    const newServerId = Date.now().toString();
+    const newServer: McpServer = {
+      id: newServerId,
+      name: serverForm.name.trim(),
+      baseUrl: serverForm.baseUrl.trim(),
+      headersText: serverForm.headersText.trim(),
+      isActive: true // Always activate new server by default
+    };
+
+    setMcpSettings(prev => {
+      // Deactivate all existing servers and activate the new one
+      const updatedServers = prev.servers.map(server => ({
+        ...server,
+        isActive: false
+      }));
+      return {
+        ...prev,
+        servers: [...updatedServers, newServer]
+      };
+    });
+
+    // Initialize connection status for new server
+    setServerConnectionStatus(prev => ({
+      ...prev,
+      [newServerId]: 'disconnected'
+    }));
+
+    // Clear MCP related states when adding new server
+    setMcpServerInfo(null);
+    setMcpTools([]);
+    setMcpSelectedTool('');
+    setMcpResult(null);
+    setMcpError(null);
+
+    setServerForm({ name: '', baseUrl: '', headersText: '' });
+    setShowAddServer(false);
+
+    // Auto load tools for the new server after a short delay
+    setTimeout(() => {
+      loadMcpTools();
+    }, 100);
+  };
+
+  const updateServer = (serverId: string) => {
+    if (!serverForm.name.trim() || !serverForm.baseUrl.trim()) {
+      return;
+    }
+
+    setMcpSettings(prev => ({
+      ...prev,
+      servers: prev.servers.map(server =>
+        server.id === serverId
+          ? {
+              ...server,
+              name: serverForm.name.trim(),
+              baseUrl: serverForm.baseUrl.trim(),
+              headersText: serverForm.headersText.trim()
+            }
+          : server
+      )
+    }));
+
+    setServerForm({ name: '', baseUrl: '', headersText: '' });
+    setEditingServer(null);
+  };
+
+  const deleteServer = (serverId: string) => {
+    const serverToDelete = mcpSettings.servers.find(s => s.id === serverId);
+    const remainingServers = mcpSettings.servers.filter(s => s.id !== serverId);
+
+    // Clear connection status for the deleted server
+    setServerConnectionStatus(prev => {
+      const newStatus = { ...prev };
+      delete newStatus[serverId];
+      return newStatus;
+    });
+
+    // Clear MCP related states when deleting a server
+    setMcpServerInfo(null);
+    setMcpTools([]);
+    setMcpSelectedTool('');
+    setMcpResult(null);
+    setMcpError(null);
+
+    if (remainingServers.length === 0) {
+      // If no servers left, just remove the deleted one
+      setMcpSettings(prev => ({
+        ...prev,
+        servers: []
+      }));
+    } else {
+      // If deleting active server, activate another one
+      if (serverToDelete?.isActive) {
+        const newActiveServer = remainingServers[0];
+        setMcpSettings(prev => ({
+          ...prev,
+          servers: remainingServers.map((server, index) => ({
+            ...server,
+            isActive: index === 0 // First remaining server becomes active
+          }))
+        }));
+
+        // Reset connection status for the new active server
+        setServerConnectionStatus(prev => ({
+          ...prev,
+          [newActiveServer.id]: 'disconnected'
+        }));
+      } else {
+        // Just remove the server
+        setMcpSettings(prev => ({
+          ...prev,
+          servers: prev.servers.filter(server => server.id !== serverId)
+        }));
+      }
+    }
+  };
+
+  const activateServer = (serverId: string) => {
+    setMcpSettings(prev => ({
+      ...prev,
+      servers: prev.servers.map(server => ({
+        ...server,
+        isActive: server.id === serverId
+      }))
+    }));
+
+    // Reset connection status for the newly activated server
+    setServerConnectionStatus(prev => ({
+      ...prev,
+      [serverId]: 'disconnected'
+    }));
+
+    // Clear MCP related states when switching servers
+    setMcpServerInfo(null);
+    setMcpTools([]);
+    setMcpSelectedTool('');
+    setMcpResult(null);
+    setMcpError(null);
+  };
+
+  const startEditServer = (server: McpServer) => {
+    setEditingServer(server.id);
+    setServerForm({
+      name: server.name,
+      baseUrl: server.baseUrl,
+      headersText: server.headersText
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingServer(null);
+    setServerForm({ name: '', baseUrl: '', headersText: '' });
+    setShowAddServer(false);
+  };
+
   const loadDemoPayload = () => {
     const url = new URL(window.location.href);
       url.searchParams.set('payload', DEMO_SHORT_CODE);
@@ -473,7 +899,6 @@ export default function App() {
           <span className="toast-text">已复制到剪贴板</span>
         </div>
       )}
-
       {settingsOpen && (
         <>
           <div className="modal-overlay" onClick={() => setSettingsOpen(false)} />
@@ -810,7 +1235,14 @@ export default function App() {
                     d="M12 0a12 12 0 0 0-3.79 23.4c.6.11.82-.26.82-.58v-2c-3.34.73-4.04-1.61-4.04-1.61a3.18 3.18 0 0 0-1.34-1.75c-1.1-.76.08-.75.08-.75a2.5 2.5 0 0 1 1.84 1.24 2.54 2.54 0 0 0 3.46 1 2.52 2.52 0 0 1 .76-1.6c-2.67-.3-5.47-1.34-5.47-5.95a4.67 4.67 0 0 1 1.24-3.24 4.3 4.3 0 0 1 .12-3.2s1-.32 3.28 1.24a11.29 11.29 0 0 1 6 0c2.28-1.56 3.27-1.24 3.27-1.24a4.3 4.3 0 0 1 .12 3.2 4.67 4.67 0 0 1 1.24 3.24c0 4.62-2.81 5.64-5.49 5.94a2.83 2.83 0 0 1 .81 2.2v3.27c0 .32.22.7.82.58A12 12 0 0 0 12 0Z"
                   />
                 </svg>
-              </a>
+                </a>
+                <button
+                className={`mcp-button ${mcpPanelOpen ? 'active' : ''}`}
+                  onClick={() => setMcpPanelOpen(v => !v)}
+                title={mcpPanelOpen ? '关闭 MCP 工具' : '打开 MCP 工具'}
+              >
+                🔧 {mcpPanelOpen ? '关闭 MCP' : 'MCP 工具'}
+              </button>
               <button className="settings-button" onClick={() => setSettingsOpen(v => !v)}>
                 {settingsOpen ? '❌ 关闭设置' : '⚙️ 打开设置'}
               </button>
@@ -976,7 +1408,408 @@ export default function App() {
             </div>
           </form>
           {sendError && <div className="error-banner">{sendError}</div>}
-        </section>
+          </section>
+
+      {mcpPanelOpen && (
+        <>
+          <div className="modal-overlay" onClick={() => setMcpPanelOpen(false)} />
+          <dialog className="settings-modal mcp-modal" open>
+            <div className="modal-header">
+              <h2>🔧 MCP 工具</h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setMcpPanelOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="hint">
+              使用外部工具扩展 AI 分析能力。连接到 MCP 服务器以获取可用工具。
+              <span className="hint-compatibility">
+                仅支持 Streamable HTTP 传输协议
+                <a
+                  href="https://modelcontextprotocol.io/specification/2025-03-26/basic/transports"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="help-link"
+                  title="查看 MCP 传输协议规范"
+                >
+                  ⚠️
+                </a>
+              </span>
+            </p>
+            {mcpError && (
+              <div className="modal-error-banner">
+                <span className="error-icon">⚠️</span>
+                <span>{mcpError}</span>
+              </div>
+            )}
+
+            {/* Server Management Section */}
+            <div className="server-management">
+              <div className="section-header">
+                <h3>MCP 服务器</h3>
+                <button
+                  type="button"
+                  className="add-server-button"
+                  onClick={() => setShowAddServer(true)}
+                >
+                  ➕ 添加服务器
+                </button>
+              </div>
+
+              {mcpSettings.servers.length === 0 ? (
+                <div className="empty-servers">
+                  <p>尚未配置任何 MCP 服务器。点击"添加服务器"开始配置。</p>
+                </div>
+              ) : (
+                <div className="servers-list">
+                  {mcpSettings.servers.map((server) => (
+                    <div key={server.id} className={`server-item ${server.isActive ? 'active' : ''}`}>
+                      <div className="server-info">
+                        <div className="server-header">
+                          <span className="server-name">{server.name}</span>
+                          <div className="server-actions">
+                            <button
+                              type="button"
+                              className={`activate-button ${server.isActive ? 'active' : ''}`}
+                              onClick={() => activateServer(server.id)}
+                              title={server.isActive ? '当前激活' : '激活此服务器'}
+                            >
+                              {server.isActive ? (
+                                serverConnectionStatus[server.id] === 'connected' ? '✅ 已连接' :
+                                serverConnectionStatus[server.id] === 'loading' ? '🔄 连接中' :
+                                '✅ 已激活'
+                              ) : '🔘 激活'}
+                            </button>
+                            <button
+                              type="button"
+                              className="edit-button"
+                              onClick={() => startEditServer(server)}
+                              title="编辑服务器"
+                            >
+                              ✏️
+                            </button>
+                            {mcpSettings.servers.length > 1 && (
+                              <button
+                                type="button"
+                                className="delete-button"
+                                onClick={() => deleteServer(server.id)}
+                                title="删除服务器"
+                              >
+                                🗑️
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="server-details">
+                          <span className="server-url">{server.baseUrl}</span>
+                        </div>
+                      </div>
+
+                      {editingServer === server.id && (
+                        <div className="edit-server-form">
+                          <div className="form-grid">
+                            <label>
+                              服务器名称
+                              <input
+                                type="text"
+                                value={serverForm.name}
+                                onChange={(e) => setServerForm(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="输入服务器名称"
+                              />
+                            </label>
+                            <label>
+                              Base URL
+                              <input
+                                type="text"
+                                value={serverForm.baseUrl}
+                                onChange={(e) => setServerForm(prev => ({ ...prev, baseUrl: e.target.value }))}
+                                placeholder="https://your-mcp-server.com"
+                              />
+                            </label>
+                            <label className="full-width">
+                              请求头（JSON 格式）
+                              <textarea
+                                value={serverForm.headersText}
+                                onChange={(e) => setServerForm(prev => ({ ...prev, headersText: e.target.value }))}
+                                placeholder='{"Authorization": "Bearer token"}'
+                                rows={2}
+                              />
+                            </label>
+                          </div>
+                          <div className="form-actions">
+                            <button
+                              type="button"
+                              className="save-button"
+                              onClick={() => updateServer(server.id)}
+                            >
+                              💾 保存
+                            </button>
+                            <button
+                              type="button"
+                              className="cancel-button"
+                              onClick={cancelEdit}
+                            >
+                              ❌ 取消
+                            </button>
+                            <button
+                              type="button"
+                              className="delete-button-form"
+                              onClick={() => {
+                                setDeleteConfirm({
+                                  show: true,
+                                  serverId: server.id,
+                                  serverName: server.name
+                                });
+                              }}
+                              title="删除此服务器"
+                            >
+                              🗑️ 删除
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showAddServer && (
+                <div className="add-server-form">
+                  <h4>添加新服务器</h4>
+                  <div className="form-grid">
+                    <label>
+                      服务器名称
+                      <input
+                        type="text"
+                        value={serverForm.name}
+                        onChange={(e) => setServerForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="输入服务器名称"
+                      />
+                    </label>
+                    <label>
+                      Base URL
+                      <input
+                        type="text"
+                        value={serverForm.baseUrl}
+                        onChange={(e) => setServerForm(prev => ({ ...prev, baseUrl: e.target.value }))}
+                        placeholder="https://your-mcp-server.com"
+                      />
+                    </label>
+                    <label className="full-width">
+                      请求头（JSON 格式）
+                      <textarea
+                        value={serverForm.headersText}
+                        onChange={(e) => setServerForm(prev => ({ ...prev, headersText: e.target.value }))}
+                        placeholder='{"Authorization": "Bearer token"}'
+                        rows={2}
+                      />
+                    </label>
+                  </div>
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="save-button"
+                      onClick={addServer}
+                      disabled={!serverForm.name.trim() || !serverForm.baseUrl.trim()}
+                    >
+                      ➕ 添加
+                    </button>
+                    <button
+                      type="button"
+                      className="cancel-button"
+                      onClick={cancelEdit}
+                    >
+                      ❌ 取消
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mcp-content">
+              {mcpServerInfo && (
+                <div className="server-info">
+                  <div className="server-info-header">
+                    <h3>服务器信息</h3>
+                    <button
+                      type="button"
+                      className="clear-server-button"
+                      onClick={() => {
+                        setMcpServerInfo(null);
+                        setMcpTools([]);
+                        setMcpSelectedTool('');
+                        setMcpResult(null);
+                        setMcpError(null);
+                      }}
+                      title="清除当前服务器信息"
+                    >
+                      🗑️ 清除
+                    </button>
+                  </div>
+                  <div className="info-grid">
+                    <InfoRow label="名称" value={mcpServerInfo.name} onCopySuccess={handleCopySuccess} />
+                    <InfoRow label="版本" value={mcpServerInfo.version} onCopySuccess={handleCopySuccess} />
+                    <InfoRow label="描述" value={mcpServerInfo.description} onCopySuccess={handleCopySuccess} />
+                  </div>
+                </div>
+              )}
+
+              <div className="tools-section">
+                <div className="tools-header">
+                  <h3>可用工具</h3>
+                  <button
+                    type="button"
+                    className="refresh-button"
+                    onClick={loadMcpTools}
+                    disabled={mcpLoading}
+                  >
+                    {mcpLoading ? '🔄 加载中...' : '🔄 刷新'}
+                  </button>
+                </div>
+
+                {mcpLoading && (
+                  <div className="loading-indicator">
+                    <span>正在连接 MCP 服务器...</span>
+                  </div>
+                )}
+
+                {!mcpLoading && mcpTools.length === 0 && !mcpError && (
+                  <div className="empty-state">
+                    <p>未找到可用工具。请检查 MCP 服务器配置。</p>
+                  </div>
+                )}
+
+                <div className="tools-list">
+                  {mcpTools.map((tool) => (
+                    <div key={tool.name} className="tool-item">
+                      <label className="tool-label">
+                        <input
+                          type="radio"
+                          name="mcp-tool"
+                          value={tool.name}
+                          checked={mcpSelectedTool === tool.name}
+                          onChange={(e) => {
+                            setMcpSelectedTool(e.target.value);
+                            setMcpResult(null);
+                            setMcpError(null);
+                          }}
+                        />
+                        <div className="tool-info">
+                          <span className="tool-title">{tool.title}</span>
+                          <span className="tool-description">{tool.description}</span>
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {mcpSelectedTool && (
+                <div className="execution-section">
+                  <h3>执行工具</h3>
+                  <div className="execution-form">
+                    <label>
+                      参数（JSON 格式）
+                      <textarea
+                        className="arguments-input"
+                        value={mcpArgumentsText}
+                        onChange={(e) => setMcpArgumentsText(e.target.value)}
+                        placeholder="{}"
+                        rows={3}
+                      />
+                    </label>
+                    {mcpArgumentError && (
+                      <div className="modal-error-banner">
+                        <span className="error-icon">⚠️</span>
+                        <span>{mcpArgumentError}</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className="execute-button"
+                      onClick={executeMcpTool}
+                      disabled={mcpExecuting}
+                    >
+                      {mcpExecuting ? '🔄 执行中...' : '🚀 执行工具'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {mcpResult && (
+                <div className="result-section">
+                  <h3>执行结果</h3>
+                  <div className="result-content">
+                    <div className="result-meta">
+                      <span className="result-tool">{mcpResult.toolTitle}</span>
+                      <span className="result-time">{formatDate(mcpResult.executedAt)}</span>
+                      {mcpResult.server && (
+                        <span className="result-server">服务器: {mcpResult.server.name || '未知'}</span>
+                      )}
+                    </div>
+                    {mcpResult.isError && (
+                      <div className="error-indicator">
+                        ⚠️ 执行出现错误
+                      </div>
+                    )}
+                    {mcpResult.plainText && (
+                      <pre className="result-text">
+                        <code>{mcpResult.plainText}</code>
+                      </pre>
+                    )}
+                    {mcpResult.structuredContent != null && (
+                      <pre className="result-json">
+                        <code>{JSON.stringify(mcpResult.structuredContent, null, 2)}</code>
+                      </pre>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </dialog>
+
+          {/* Custom Delete Confirmation Dialog */}
+          {deleteConfirm.show && (
+            <>
+              <div className="modal-overlay" />
+              <dialog className="confirm-dialog" open>
+                <div className="confirm-content">
+                  <div className="confirm-header">
+                    <h3>⚠️ 确认删除</h3>
+                  </div>
+                  <div className="confirm-body">
+                    <p>确定要删除服务器 <strong>"{deleteConfirm.serverName}"</strong> 吗？</p>
+                    <p className="confirm-warning">此操作不可恢复，请谨慎操作。</p>
+                  </div>
+                  <div className="confirm-actions">
+                    <button
+                      type="button"
+                      className="confirm-cancel"
+                      onClick={() => setDeleteConfirm({ show: false, serverId: '', serverName: '' })}
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      className="confirm-delete"
+                      onClick={() => {
+                        deleteServer(deleteConfirm.serverId);
+                        setDeleteConfirm({ show: false, serverId: '', serverName: '' });
+                        cancelEdit();
+                      }}
+                    >
+                      🗑️ 确认删除
+                    </button>
+                  </div>
+                </div>
+              </dialog>
+            </>
+          )}
+        </>
+      )}
       </main>
     </div>
   );

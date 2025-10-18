@@ -37,3 +37,5 @@ web/dist/
 web/.next/
 web/.open-next/
 web/.wrangler/
+
+.codex/
