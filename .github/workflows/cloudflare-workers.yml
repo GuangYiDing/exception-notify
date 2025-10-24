@@ -65,8 +65,38 @@ jobs:
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           command: kv namespace list
 
-      # Step 4️⃣ - Extract KV ID & Generate wrangler.toml
-      - name: Extract KV ID and Generate wrangler.toml
+      # Step 4️⃣ - List D1 databases
+      - name: List Cloudflare D1 databases
+        id: list-d1
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: d1 list --json
+
+      # Step 5️⃣ - Create D1 if missing
+      - name: Create Cloudflare D1 database if missing
+        if: ${{ !contains(steps.list-d1.outputs.command-output, 'exception-notify-db') }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: d1 create exception-notify-db
+
+      # Step 6️⃣ - Re-list D1 after possible creation
+      - name: Refresh Cloudflare D1 database list
+        id: list-d1-again
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: d1 list --json
+
+      # Step 7️⃣ - Extract KV & D1 IDs and Generate wrangler.toml
+      - name: Extract KV & D1 IDs and Generate wrangler.toml
         env:
           GIT_COMMIT_SHA: ${{ github.sha }}
         run: |
@@ -83,13 +113,29 @@ jobs:
           echo "✅ Found KV_NAMESPACE_ID=$KV_ID"
           echo "KV_NAMESPACE_ID=$KV_ID" >> $GITHUB_ENV
 
+          echo "🔍 Extracting D1 ID for 'exception-notify-db'..."
+          D1_ID=$(echo '${{ steps.list-d1-again.outputs.command-output }}' | jq -r '.[] | select(.name=="exception-notify-db") | (.uuid // .id // .database_id)')
+
+          if [ -z "$D1_ID" ] || [ "$D1_ID" = "null" ]; then
+            echo "❌ Failed to extract D1_DATABASE_ID!"
+            echo "Raw JSON output below:"
+            echo '${{ steps.list-d1-again.outputs.command-output }}'
+            exit 1
+          fi
+
+          echo "✅ Found D1_DATABASE_ID=$D1_ID"
+          echo "D1_DATABASE_ID=$D1_ID" >> $GITHUB_ENV
+          echo "D1_DATABASE_NAME=exception-notify-db" >> $GITHUB_ENV
+
           echo "🚀 Generating wrangler.toml..."
           export KV_NAMESPACE_ID=$KV_ID
+          export D1_DATABASE_ID=$D1_ID
+          export D1_DATABASE_NAME=exception-notify-db
           envsubst < wrangler.template.toml > wrangler.toml
           echo "✅ Generated wrangler.toml:"
           cat wrangler.toml
 
-      # Step 5️⃣ - Deploy to Cloudflare Workers
+      # Step 8️⃣ - Deploy to Cloudflare Workers
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
