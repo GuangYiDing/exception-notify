@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-import { getCloudflareEnv } from '@/lib/cloudflare-env';
+import { getCloudflareEnv, createStorage } from '@/lib/cloudflare-env';
 
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -12,6 +12,7 @@ const jsonResponse = (body: unknown, status = 200) =>
 
 export async function GET(request: NextRequest) {
   const env = await getCloudflareEnv();
+  const storage = createStorage(env);
   const searchParams = request.nextUrl.searchParams;
   const payload = searchParams.get('payload');
 
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     return jsonResponse({ code: 1, message: 'payload must be a non-empty string' }, 400);
   }
 
-  const original = await env.CODE_MAP.get(payload);
+  const original = await storage.get(payload);
   if (!original) {
     return jsonResponse({ code: 1, message: 'short code not found' }, 404);
   }

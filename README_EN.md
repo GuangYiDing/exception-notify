@@ -149,7 +149,7 @@ Cloud Log Link: https://console.cloud.tencent.com/cls/search?region=ap-guangzhou
 
 [Open AI Analysis](https://fixit.nolimit35.com/?payload=xxxxxx)
 
-(The link embeds a 16-character token from `/api/compress`; the workspace decodes the context and lets you continue the conversation.)
+(The link embeds a content-based token from `/api/compress`; the workspace resolves the JSON payload and lets you continue the conversation.)
 
 -------------------------------
 Stack Trace:
@@ -167,7 +167,7 @@ mention: @John Doe
 
 ### 🧠 AI Analysis Workspace
 
-Exception-Notify compresses exception details and code context into a Base64URL + GZIP string, calls the `/api/compress` endpoint hosted under the configured `analysis-page-url` to obtain a 16-character token, and then builds the final link with `?payload=`. The project ships a sample Vite + React workspace under the repository root (`web/`) which decodes the payload in the browser and allows interactive conversations with your AI provider.
+Exception-Notify serializes exception details and code context into JSON, calls the `/api/compress` endpoint hosted under the configured `analysis-page-url` to obtain a deterministic token (by default a 64-character SHA-256 hex string), and then builds the final link with `?payload=`. The project ships a sample React workspace under the repository root (`web/`) which reads the JSON payload in the browser and allows interactive conversations with your AI provider.
 
 #### 🎨 Workspace Features
 
@@ -216,7 +216,7 @@ The repository is configured with Cloudflare Pages automatic deployment workflow
 
 #### ⚙️ Configuration
 
-1. Point `analysis-page-url` to your deployed workspace root (e.g., `https://your-workspace.vercel.app`), and ensure the same origin exposes a POST `/api/compress` endpoint.
+1. Point `analysis-page-url` to your deployed workspace root (e.g., `https://your-workspace.vercel.app`), and ensure the same origin exposes a POST `/api/compress` endpoint that accepts `{payload: {...}}` JSON and returns a token `{code, data}`.
 2. The workspace prompts users to enter API keys and model information in the browser. All sensitive configurations are stored only in browser LocalStorage
 3. Can be replaced with internal proxy service as needed
 
@@ -398,7 +398,7 @@ When the @ mention feature is enabled, the system will identify the responsible 
 
 ### 🤖 AI Intelligent Suggestion Configuration
 
-Exception-Notify can bundle stack traces, code context, trace identifiers, and author information into a compressed payload that is appended to an external AI workspace URL. The workspace (for example the sample app under `web/`) can then decode the payload, render the details, and let you drive the conversation with your preferred AI provider.
+Exception-Notify can bundle stack traces, code context, trace identifiers, and author information into a JSON payload that is appended to an external AI workspace URL. The workspace (for example the sample app under `web/`) can then parse the payload, render the details, and let you drive the conversation with your preferred AI provider.
 
 ```yaml
 exception:
@@ -415,13 +415,13 @@ exception:
 1. **enabled**: Turns on payload generation and the AI analysis link block.
 2. **include-code-context**: Captures surrounding source code when repository integrations can provide it.
 3. **code-context-lines**: Controls how many lines before and after the error line are included.
-4. **analysis-page-url**: Root of your hosted workspace; the same origin must provide a POST `/api/compress` endpoint accepting `{payload: longCode}`.
+4. **analysis-page-url**: Root of your hosted workspace; the same origin must provide a POST `/api/compress` endpoint accepting `{payload: {...}}` where `payload` is the full exception JSON document.
 5. **payload-param**: Query parameter name expected by the workspace; defaults to `payload` and must stay in sync with the frontend.
 
 **Important Notes**:
 
 - The backend no longer calls external AI providers directly; conversations happen inside the workspace.
-- Payloads are encoded with Base64URL + GZIP. The sample workspace demonstrates how to decode them client-side.
+- Payloads are stored as JSON strings; the sample workspace demonstrates how to persist, retrieve, and render them on the client side.
 - Users provide their API credentials within the workspace UI (stored locally by default). Consider proxying through an internal service if stricter control is required.
 - If workspace configuration is incomplete, the notification will omit the AI analysis link but still deliver the rest of the alert normally.
 

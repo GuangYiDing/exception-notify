@@ -166,7 +166,7 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
 
 ### 🧠 AI 分析工作台
 
-组件会将异常信息、代码上下文等内容压缩为 Base64URL + GZIP 字符串，在服务端调用 `analysis-page-url` 所在域名下的 `/api/compress` 接口生成 16 位短码，并在通知中拼接 `?payload=短码` 的访问链接。仓库根目录提供了一个基于 Vite + React 的示例 Web 项目（`web/`），用于在浏览器侧解析数据并与 AI 服务交互。
+组件会将异常信息、代码上下文等内容序列化为 JSON，在服务端调用 `analysis-page-url` 所在域名下的 `/api/compress` 接口生成基于内容的短码（默认为 64 位 SHA-256 十六进制字符串），并在通知中拼接 `?payload=短码` 的访问链接。仓库根目录提供了一个基于 React 的示例 Web 项目（`web/`），用于在浏览器侧加载 JSON 数据并与 AI 服务交互。
 
 #### 🎨 工作台特性
 
@@ -218,7 +218,7 @@ java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is
 
 #### ⚙️ 配置说明
 
-1. 将 `analysis-page-url` 指向部署后的地址（例如 `https://your-workspace.vercel.app` 或 `https://your-workspace.pages.dev`）
+1. 将 `analysis-page-url` 指向部署后的地址（例如 `https://your-workspace.vercel.app` 或 `https://your-workspace.pages.dev`），并确保同域暴露 POST `/api/compress` 接口以 `{payload: {...}}` JSON 作为请求体并返回 `{code, data}` 短码。
 2. Web 工作台会提示用户在本地浏览器输入 API Key 与模型信息，所有敏感配置仅保存在浏览器 LocalStorage 中
 3. 可根据需要替换为企业内部的中转服务
 
@@ -399,7 +399,7 @@ exception:
 
 ### 🤖 AI 分析链接配置
 
-Exception-Notify 会将堆栈信息、代码上下文、Trace ID、提交人等数据压缩后请求 `analysis-page-url` 域名下的 `/api/compress` 接口生成 16 位短码，并在通知中拼接 `?payload=` 的访问链接。通过自建的 Web 工作台（仓库自带示例项目 `web/`），即可在浏览器端解压并与 AI 服务进行对话。
+Exception-Notify 会将堆栈信息、代码上下文、Trace ID、提交人等数据序列化为 JSON 后请求 `analysis-page-url` 域名下的 `/api/compress` 接口生成短码（默认返回 64 位 SHA-256 十六进制字符串），并在通知中拼接 `?payload=` 的访问链接。通过自建的 Web 工作台（仓库自带示例项目 `web/`），即可在浏览器端直接读取 JSON 并与 AI 服务进行对话。
 
 ```yaml
 exception:
@@ -416,12 +416,12 @@ exception:
 1. **enabled**：开启后，通知中会携带 AI 分析链接并生成压缩负载。
 2. **include-code-context**：当成功获取代码上下文时一并压缩进负载。
 3. **code-context-lines**：控制采集的上下文行数。
-4. **analysis-page-url**：指向已部署的分析工作台根地址，需要在同域暴露 `/api/compress` 接口（POST，Body `{payload: 长码}`）。
+4. **analysis-page-url**：指向已部署的分析工作台根地址，需要在同域暴露 `/api/compress` 接口（POST，Body `{payload: {...}}`，其中 payload 是完整的异常 JSON）。
 
 **注意事项**：
 
 - 后端不再直接调用外部 AI 接口，所有对话在工作台中进行。
-- 负载采用 Base64URL + GZIP 编码，通过 `/api/compress` 接口生成 16 位短码，示例工作台提供了解码实现，可按需扩展。
+- 负载采用 JSON 字符串序列化，通过 `/api/compress` 接口计算短码并存储，示例工作台提供了解析实现，可按需扩展。
 - 用户在工作台中输入的 API Key 默认只保存在浏览器 LocalStorage，如需集中管理可改为企业内代理服务。
 - 若配置不完整（例如缺少工作台地址），通知会自动省略 AI 分析链接，但不会影响其他信息的发送。
 

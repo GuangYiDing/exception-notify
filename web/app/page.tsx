@@ -1,33 +1,12 @@
 'use client';
 
 import {FormEvent, useEffect, useMemo, useRef, useState} from 'react';
-import {ungzip} from 'pako';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import 'highlight.js/styles/github.css';
 
-interface AiAnalysisPayload {
-  appName?: string;
-  environment?: string;
-  occurrenceTime?: string;
-  exceptionType?: string;
-  exceptionMessage?: string;
-  location?: string;
-  stacktrace?: string;
-  codeContext?: string;
-  traceId?: string;
-  traceUrl?: string;
-  additionalInfo?: string;
-  author?: {
-    name?: string;
-    email?: string;
-    lastCommitTime?: string;
-    fileName?: string;
-    lineNumber?: number;
-    commitMessage?: string;
-  };
-}
+import type {AiAnalysisPayload} from '@/lib/ai-analysis-payload';
 
 type ChatMessage = {
   role: 'system' | 'user' | 'assistant';
@@ -56,12 +35,46 @@ const defaultSettings: ClientSettings = {
   systemPrompt: defaultSystemPrompt
 };
 
-const DEMO_PAYLOAD = 'H4sIAAAAAAAAAK1UTW8TMRD9K8OeUqnZ7KZJPxa1UBWQeuiHINxycbyT1NRrL7Y3tKp658IRceAENy4gLgjK36HQn8HYu6GhpUJCnHY98-bpjf1mTiJWlruswCiLCiZlW5scTduimQqO0WKEaiqMVgUqR5DS6JyCmvPKGFQcByKUdpNuv52k7bQ_SJMs6Wdp19cecSyd0GpwXHrUEzZlsWRqEu9WUu5roRya-zPQfMEOWssmvub8-evzr2cX79-ev3j5_dWn-uf8w5eLj2--fT778e6MyqTmLDBkEddF7PuIQx9x00e850-PmgM3yByGUOu3hNeXpb3VBeK0jvFDZxj_u_AMtphS2oFQU32IMIwCazxBt-2wsK2FYQQj5KyyPhmUUURYUMQ2VEPHHPwf4X8mGzPO8obrQf1vq1Eh3BxVEw9M_d6MyFYqNjiWyF28S3c8xR10Bzrf5JxeSJvtopRx3XbSqgFQI_6BoXVjPqha7l5r7xmOYq6VM1pK6jM0snV5LiU931yPc6nAuLriX5rrHH0Gj7zD014XIKAhXB6s19-H-LRC63ZoXKjc6fvKCXfcMnV44fZQpb0lgCmTIv_1SKGyzvUAOJO8kpTcN7rQ3jnzgD6A_ywDdDow2Lu3l8EBU7nE4JJGDDIjBbmHgCsAUk_iHEfVpDWMNke6cuA0kDwrrKsLMjg5HUaLTfWt9ZrrTn0OBs1bC5CRK4MVIy9lY2MDyEsw67vUVjhtjmPLpjiveA3AOs0PZy6kMTxs6SvWD9B-AmDQVUbVpBSjiw_TtZ3TpYe_tl8u7aXxWjfnLO0ma6MZ5rGRBDpwrrRZpxNCMR4xcgbNhC46Iu_czMAqspOJspNI1WtuU5JY2DrAsHEKJjw5k2HAKHh3jtnvFmbdli5oWK6uumSQrGVL3SxNCTYWEps1em0yPYtQuFsVIyQhdLfedJ7ycs2NxVHWvFJjIbJHY4B6T0Bjtej09CfuTiRZtQUAAA';
-const DEMO_SHORT_CODE = '6abdc76d4ea8a70a08420300b52ff8d3483bb2633c185c2dc709cd5851d8144c';
+const DEMO_PAYLOAD_OBJECT: AiAnalysisPayload = {
+  appName: 'mall-order-service',
+  environment: 'prod',
+  occurrenceTime: '2025-01-15T10:05:12',
+  exceptionType: 'java.lang.NullPointerException',
+  exceptionMessage: '创建订单时订单对象为空',
+  location: 'com.mall.order.service.OrderService.createOrder(OrderService.java:148)',
+  stacktrace:
+    'java.lang.NullPointerException: Cannot invoke "Order.getItems()" because "order" is null\n' +
+    '\tat com.mall.order.service.OrderService.createOrder(OrderService.java:148)\n' +
+    '\tat com.mall.order.facade.OrderFacade.submitOrder(OrderFacade.java:54)\n' +
+    '\tat sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\n' +
+    '\tat sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)\n' +
+    '\tat com.mall.web.controller.OrderController.placeOrder(OrderController.java:87)',
+  codeContext:
+    '142  Order order = orderRequestMapper.toEntity(request);\n' +
+    '143  validateOrder(order);\n' +
+    '144  calculatePromotion(order);\n' +
+    '145  \n' +
+    '146  // TODO: handle null order earlier\n' +
+    '147  log.debug("About to persist order: {}", order != null ? order.getId() : "null");\n' +
+    '>>> 148  orderRepository.save(order);\n' +
+    '149  stockService.lock(order.getItems());\n' +
+    '150  return order;\n',
+  traceId: 'trace-prod-3f92dca1209b',
+  traceUrl: 'https://trace.example.com/id/trace-prod-3f92dca1209b',
+  author: {
+    name: 'Alice Chen',
+    email: 'alice.chen@example.com',
+    lastCommitTime: '2025-01-10T09:32:11',
+    fileName: 'OrderService.java',
+    lineNumber: 148,
+    commitMessage: 'fix: order validation handles null request'
+  }
+};
+const DEMO_PAYLOAD = JSON.stringify(DEMO_PAYLOAD_OBJECT);
+const DEMO_SHORT_CODE = '70235bf91147d98283f6891a9b98f1734d42298b11e0a0c9bea66e661fb12837';
 const DEMO_KV: Record<string, string> = {
   [DEMO_SHORT_CODE]: DEMO_PAYLOAD
 };
-const textDecoder = new TextDecoder();
 
 const repositoryUrl = 'https://github.com/GuangYiDing/exception-notify';
 const rawBuildSha = (process.env.NEXT_PUBLIC_BUILD_SHA ?? '').trim();
@@ -129,8 +142,8 @@ export default function App() {
           return;
         }
 
-        let compressed = DEMO_KV[encoded];
-        if (!compressed) {
+        let serialized = DEMO_KV[encoded];
+        if (!serialized) {
           const response = await fetch(`/api/decompress?payload=${encodeURIComponent(encoded)}`);
           if (!response.ok) {
             throw new Error(`Failed to fetch payload: ${response.status}`);
@@ -139,13 +152,14 @@ export default function App() {
           if (body.code !== 0 || typeof body.data !== 'string') {
             throw new Error(body.message || 'Invalid payload response');
           }
-          compressed = body.data;
+          serialized = body.data;
         }
 
-        const bytes = decodeBase64Url(compressed);
-        const decompressed = ungzip(bytes);
-        const json = textDecoder.decode(decompressed);
-        const parsed: AiAnalysisPayload = JSON.parse(json);
+        if (!serialized || serialized.length === 0) {
+          throw new Error('Empty payload content');
+        }
+
+        const parsed: AiAnalysisPayload = JSON.parse(serialized);
         setPayload(parsed);
         setPayloadError(null);
 
@@ -213,7 +227,7 @@ export default function App() {
         return newMessages;
       });
     }
-  }, [payload?.codeContext, payload?.stacktrace, payload?.additionalInfo]);
+  }, [payload]);
 
   // Auto scroll to bottom when streaming or new messages arrive
   useEffect(() => {
@@ -780,7 +794,7 @@ export default function App() {
                 </pre>
               ) : (
                 <p className="empty-hint">
-                  点击"添加"按钮补充其他信息（如 pom.xml 依赖、配置文件等），帮助 AI 更准确地分析问题。
+                  点击&quot;添加&quot;按钮补充其他信息（如 pom.xml 依赖、配置文件等），帮助 AI 更准确地分析问题。
                 </p>
               )}
             </section>
@@ -1016,20 +1030,6 @@ function InfoRow({ label, value, onCopySuccess }: InfoRowProps) {
       </span>
     </div>
   );
-}
-
-function decodeBase64Url(input: string): Uint8Array {
-  let base64 = input.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = base64.length % 4;
-  if (pad) {
-    base64 += '='.repeat(4 - pad);
-  }
-  const binary = window.atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
 }
 
 function buildSummaryPrompt(payload: AiAnalysisPayload): string | null {

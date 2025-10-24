@@ -11,7 +11,11 @@
 "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
 "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
 "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
-"cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+"cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+"test:storage": "tsx lib/test-storage.ts",
+"d1:migrate": "wrangler d1 execute exception-notify-db --file=./migrations/0001_create_code_map.sql",
+"d1:migrate:local": "wrangler d1 execute exception-notify-db --local --file=./migrations/0001_create_code_map.sql",
+"pre-deploy-check": "tsx scripts/pre-deploy-check.ts"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "^1.11.0",
@@ -32,6 +36,7 @@
     "esbuild": "^0.21.5",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.2.3",
+    "tsx": "^4.19.2",
     "typescript": "^5.3.3",
     "wrangler": "^4.43.0"
   }
