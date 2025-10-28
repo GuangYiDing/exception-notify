@@ -35,7 +35,7 @@ Add the following dependency to your Spring Boot project's `pom.xml` file:
 <dependency>
     <groupId>com.nolimit35.springkit</groupId>
     <artifactId>exception-notify</artifactId>
-    <version>1.3.2-RELEASE</version>
+    <version>1.3.3-RELEASE</version>
 </dependency>
 ```
 
