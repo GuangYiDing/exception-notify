@@ -1839,13 +1839,26 @@ pre {
 }
 
 .form-grid input,
-.form-grid textarea {
+.form-grid textarea,
+.form-grid select {
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-strong);
   color: var(--color-text-primary);
   font-size: 14px;
+}
+
+.form-grid select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.41.58 6 5.17 10.59.58 12 2l-6 6-6-6L1.41.58Z' fill='%236366f1'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px 8px;
 }
 
 .form-grid textarea {
@@ -1855,7 +1868,8 @@ pre {
 }
 
 .form-grid input:focus,
-.form-grid textarea:focus {
+.form-grid textarea:focus,
+.form-grid select:focus {
   outline: none;
   border-color: rgba(99, 102, 241, 0.5);
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
@@ -2027,5 +2041,3 @@ pre {
     transform: translate(-50%, -50%) scale(1);
   }
 }
-
-
