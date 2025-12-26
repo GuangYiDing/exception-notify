@@ -1,87 +1,12 @@
 'use client';
 
-import {FormEvent, useEffect, useMemo, useRef, useState} from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github.css';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 
-import type {AiAnalysisPayload} from '@/lib/ai-analysis-payload';
-
-type ChatMessage = {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-  reasoning?: string;
-};
-
-type ClientSettings = {
-  endpoint: string;
-  apiKey: string;
-  model: string;
-  temperature: number;
-  systemPrompt: string;
-};
-
-const SETTINGS_KEY = 'exception-notify-ai-settings';
-
-const defaultSystemPrompt =
-  '你是一个资深 Java/Spring 工程师，擅长分析异常堆栈并提供修复建议。请结合提供的上下文，输出简洁明确、可执行的建议。';
-
-const defaultSettings: ClientSettings = {
-  endpoint: 'https://api.openai.com/v1/chat/completions',
-  apiKey: '',
-  model: 'gpt-4o-mini',
-  temperature: 0.2,
-  systemPrompt: defaultSystemPrompt
-};
-
-const DEMO_PAYLOAD_OBJECT: AiAnalysisPayload = {
-  appName: 'mall-order-service',
-  environment: 'prod',
-  occurrenceTime: '2025-01-15T10:05:12',
-  exceptionType: 'java.lang.NullPointerException',
-  exceptionMessage: '创建订单时订单对象为空',
-  location: 'com.mall.order.service.OrderService.createOrder(OrderService.java:148)',
-  stacktrace:
-    'java.lang.NullPointerException: Cannot invoke "Order.getItems()" because "order" is null\n' +
-    '\tat com.mall.order.service.OrderService.createOrder(OrderService.java:148)\n' +
-    '\tat com.mall.order.facade.OrderFacade.submitOrder(OrderFacade.java:54)\n' +
-    '\tat sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\n' +
-    '\tat sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)\n' +
-    '\tat com.mall.web.controller.OrderController.placeOrder(OrderController.java:87)',
-  codeContext:
-    '142  Order order = orderRequestMapper.toEntity(request);\n' +
-    '143  validateOrder(order);\n' +
-    '144  calculatePromotion(order);\n' +
-    '145  \n' +
-    '146  // TODO: handle null order earlier\n' +
-    '147  log.debug("About to persist order: {}", order != null ? order.getId() : "null");\n' +
-    '>>> 148  orderRepository.save(order);\n' +
-    '149  stockService.lock(order.getItems());\n' +
-    '150  return order;\n',
-  traceId: 'trace-prod-3f92dca1209b',
-  traceUrl: 'https://trace.example.com/id/trace-prod-3f92dca1209b',
-  author: {
-    name: 'Alice Chen',
-    email: 'alice.chen@example.com',
-    lastCommitTime: '2025-01-10T09:32:11',
-    fileName: 'OrderService.java',
-    lineNumber: 148,
-    commitMessage: 'fix: order validation handles null request'
-  }
-};
-const DEMO_PAYLOAD = JSON.stringify(DEMO_PAYLOAD_OBJECT);
-const DEMO_SHORT_CODE = '70235bf91147d98283f6891a9b98f1734d42298b11e0a0c9bea66e661fb12837';
-const DEMO_KV: Record<string, string> = {
-  [DEMO_SHORT_CODE]: DEMO_PAYLOAD
-};
-
-const repositoryUrl = 'https://github.com/GuangYiDing/exception-notify';
-const rawBuildSha = (process.env.NEXT_PUBLIC_BUILD_SHA ?? '').trim();
-const buildSha = rawBuildSha || 'dev';
-const buildShaDisplay = buildSha.length > 7 ? buildSha.slice(0, 7) : buildSha;
-const isDevBuild = buildSha === 'dev';
-const buildShaUrl = isDevBuild ? repositoryUrl : `${repositoryUrl}/commit/${buildSha}`;
+import { CopyToast, WelcomeCard, SettingsModal, ChatPanel, ExceptionCard } from './components';
+import { SETTINGS_KEY, defaultSettings } from './lib/constants';
+import { buildSummaryPrompt } from './lib/utils';
+import type { AiAnalysisPayload } from '@/lib/ai-analysis-payload';
+import type { ChatMessage, ClientSettings } from './lib/types';
 
 export default function App() {
   const [payload, setPayload] = useState<AiAnalysisPayload | null>(null);
@@ -123,12 +48,6 @@ export default function App() {
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [showCopyToast, setShowCopyToast] = useState(false);
-  const [editingCodeContext, setEditingCodeContext] = useState(false);
-  const [editingStacktrace, setEditingStacktrace] = useState(false);
-  const [editingAdditionalInfo, setEditingAdditionalInfo] = useState(false);
-  const [codeContextDraft, setCodeContextDraft] = useState('');
-  const [stacktraceDraft, setStacktraceDraft] = useState('');
-  const [additionalInfoDraft, setAdditionalInfoDraft] = useState('');
 
   useEffect(() => {
     const resolvePayload = async () => {
@@ -142,7 +61,10 @@ export default function App() {
           return;
         }
 
-        let serialized = DEMO_KV[encoded];
+        let serialized: string | undefined;
+        // Check demo KV first
+        const { DEMO_KV } = await import('./lib/constants');
+        serialized = DEMO_KV[encoded];
         if (!serialized) {
           const response = await fetch(`/api/decompress?payload=${encodeURIComponent(encoded)}`);
           if (!response.ok) {
@@ -187,7 +109,7 @@ export default function App() {
       return;
     }
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    
+
     // Update system message when system prompt changes
     setMessages(prev => {
       const systemIndex = prev.findIndex(msg => msg.role === 'system');
@@ -323,12 +245,12 @@ export default function App() {
             const jsonStr = trimmed.slice(6);
             const parsed = JSON.parse(jsonStr);
             const delta = parsed?.choices?.[0]?.delta;
-            
+
             if (delta?.content) {
               accumulatedContent += delta.content;
               setStreamingContent(accumulatedContent);
             }
-            
+
             if (delta?.reasoning_content) {
               accumulatedReasoning += delta.reasoning_content;
               setStreamingReasoning(accumulatedReasoning);
@@ -390,209 +312,55 @@ export default function App() {
 
   const handleRegenerate = async (index: number) => {
     if (isSending) return;
-    
+
     // Find the user message before this assistant message
     const userMessageIndex = index - 1;
     if (userMessageIndex < 0 || messages[userMessageIndex].role !== 'user') {
       return;
     }
-    
+
     // Remove the assistant message we want to regenerate
     const messagesBeforeAssistant = messages.slice(0, index);
     setMessages(messagesBeforeAssistant);
-    
+
     // Resend the user message (don't add it again since it's already in messagesBeforeAssistant)
     const userMessage = messages[userMessageIndex].content;
     await sendMessage(userMessage, messagesBeforeAssistant, true);
   };
-
-  const exceptionTitle = useMemo(() => {
-    if (!payload) {
-      return '异常详情';
-    }
-    const parts = [
-      payload.appName || '应用',
-      payload.environment ? `环境 ${payload.environment}` : undefined
-    ].filter(Boolean);
-    return parts.join(' · ') || '异常详情';
-  }, [payload]);
 
   const handleCopySuccess = () => {
     setShowCopyToast(true);
     setTimeout(() => setShowCopyToast(false), 2000);
   };
 
-  const handleEditCodeContext = () => {
-    setCodeContextDraft(payload?.codeContext || '');
-    setEditingCodeContext(true);
-  };
-
-  const handleSaveCodeContext = () => {
-    if (payload) {
-      setPayload({ ...payload, codeContext: codeContextDraft });
+  const formatApiError = (status: number, statusText: string, body: string): string => {
+    const snippet = body ? body.slice(0, 200) : '';
+    if (status === 401) {
+      return '401 未授权：请检查 API Key 是否填写正确。';
     }
-    setEditingCodeContext(false);
-  };
-
-  const handleCancelCodeContext = () => {
-    setEditingCodeContext(false);
-    setCodeContextDraft('');
-  };
-
-  const handleEditStacktrace = () => {
-    setStacktraceDraft(payload?.stacktrace || '');
-    setEditingStacktrace(true);
-  };
-
-  const handleSaveStacktrace = () => {
-    if (payload) {
-      setPayload({ ...payload, stacktrace: stacktraceDraft });
+    if (status === 404) {
+      return '404 未找到接口：请确认 Endpoint / 模型路径配置是否正确。' + (snippet ? ` 服务器返回：${snippet}` : '');
     }
-    setEditingStacktrace(false);
-  };
-
-  const handleCancelStacktrace = () => {
-    setEditingStacktrace(false);
-    setStacktraceDraft('');
-  };
-
-  const handleEditAdditionalInfo = () => {
-    setAdditionalInfoDraft(payload?.additionalInfo || '');
-    setEditingAdditionalInfo(true);
-  };
-
-  const handleSaveAdditionalInfo = () => {
-    if (payload) {
-      setPayload({ ...payload, additionalInfo: additionalInfoDraft });
+    if (status === 429) {
+      return '429 频率受限：请稍后重试或降低调用频率。';
     }
-    setEditingAdditionalInfo(false);
-  };
-
-  const handleCancelAdditionalInfo = () => {
-    setEditingAdditionalInfo(false);
-    setAdditionalInfoDraft('');
-  };
-
-  const loadDemoPayload = () => {
-    const url = new URL(window.location.href);
-      url.searchParams.set('payload', DEMO_SHORT_CODE);
-    window.location.href = url.toString();
+    if (status >= 500) {
+      return `服务端错误 ${status}：${statusText || ''}`.trim() + (snippet ? `，响应内容：${snippet}` : '');
+    }
+    return `调用失败 ${status}${statusText ? ' ' + statusText : ''}${snippet ? `：${snippet}` : ''}`;
   };
 
   return (
     <div className="app-container">
-      {showCopyToast && (
-        <div className="copy-toast">
-          <span className="toast-icon">✓</span>
-          <span className="toast-text">已复制到剪贴板</span>
-        </div>
-      )}
+      {showCopyToast && <CopyToast />}
 
-      {settingsOpen && (
-        <>
-          <div className="modal-overlay" onClick={() => setSettingsOpen(false)} />
-          <dialog className="settings-modal" open>
-            <div className="modal-header">
-              <h2>⚙️ AI 接口设置</h2>
-              <button
-                type="button"
-                className="modal-close"
-                onClick={() => setSettingsOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <p className="hint">
-              API Key 仅保存在当前浏览器 LocalStorage 中。若使用公共环境，请谨慎输入密钥。
-            </p>
-            {sendError && sendError.includes('API Key') && (
-              <div className="modal-error-banner">
-                <span className="error-icon">⚠️</span>
-                <span>{sendError}</span>
-              </div>
-            )}
-            <form className="settings-form" onSubmit={event => event.preventDefault()}>
-              <label className="system-prompt-label">
-                系统提示词
-                <textarea
-                  className="system-prompt-input"
-                  value={settings.systemPrompt}
-                  onChange={event =>
-                    setSettings(prev => ({ ...prev, systemPrompt: event.target.value }))
-                  }
-                  placeholder="输入系统提示词，定义 AI 的角色和行为..."
-                  rows={4}
-                />
-              </label>
-              
-              <div className="settings-grid">
-                <label>
-                  Endpoint
-                  <input
-                    type="text"
-                    value={settings.endpoint}
-                    onChange={event =>
-                      setSettings(prev => ({ ...prev, endpoint: event.target.value }))
-                    }
-                  />
-                </label>
-                <label>
-                  Model
-                  <input
-                    type="text"
-                    value={settings.model}
-                    onChange={event =>
-                      setSettings(prev => ({ ...prev, model: event.target.value }))
-                    }
-                  />
-                </label>
-                <label>
-                  Temperature
-                  <input
-                    type="number"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    value={settings.temperature}
-                    onChange={event =>
-                      setSettings(prev => ({
-                        ...prev,
-                        temperature: Number(event.target.value)
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  API Key
-                  <input
-                    type="password"
-                    value={settings.apiKey}
-                    onChange={event =>
-                      setSettings(prev => ({ ...prev, apiKey: event.target.value }))
-                    }
-                  />
-                </label>
-              </div>
-            </form>
-            <p className="modal-footer">
-              © Nolimit35-不限进步 · 构建 SHA：{' '}
-              {isDevBuild ? (
-                <span className="build-sha">{buildShaDisplay}</span>
-              ) : (
-                <a
-                  className="build-sha"
-                  href={buildShaUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={`查看提交 ${buildSha}`}
-                >
-                  {buildShaDisplay}
-                </a>
-              )}
-            </p>
-          </dialog>
-        </>
-      )}
+      <SettingsModal
+        settings={settings}
+        setSettings={setSettings}
+        settingsOpen={settingsOpen}
+        setSettingsOpen={setSettingsOpen}
+        sendError={sendError}
+      />
 
       {payloadError && payloadError !== 'missing-payload' && (
         <div className="error-banner">{payloadError}</div>
@@ -600,562 +368,34 @@ export default function App() {
 
       <main className="content">
         {payloadError === 'missing-payload' ? (
-          <section className="card welcome-card">
-            <h2>欢迎使用异常 AI 分析工作台</h2>
-            <p className="welcome-text">
-              通常情况下，您会通过异常通知中的链接直接访问带有异常数据的页面。
-              如果您想先体验功能，可以点击下方按钮加载示例数据。
-            </p>
-            <button className="demo-button" onClick={loadDemoPayload}>
-              <span className="demo-icon">🚀</span>
-              <span>体验示例</span>
-            </button>
-            <p className="welcome-subtitle">
-              基于异常上下文快速梳理问题并联动对话式分析。
-            </p>
-          </section>
+          <WelcomeCard />
         ) : payload ? (
-          <section className="card">
-            <header className="card-header">
-              <div>
-                <h2>{exceptionTitle}</h2>
-                {payload.occurrenceTime && (
-                  <span className="time">{formatDate(payload.occurrenceTime)}</span>
-                )}
-              </div>
-              {payload.traceUrl && (
-                <a
-                  className="primary-link"
-                  href={payload.traceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  🔗 查看链路
-                </a>
-              )}
-            </header>
-
-            <div className="card-grid">
-              <InfoRow label="🐛 异常类型" value={payload.exceptionType} onCopySuccess={handleCopySuccess} />
-              <InfoRow label="🔍 Trace ID" value={payload.traceId} onCopySuccess={handleCopySuccess} />
-              <InfoRow label="📍 异常位置" value={payload.location} onCopySuccess={handleCopySuccess} />
-              <InfoRow label="💬 异常描述" value={payload.exceptionMessage} onCopySuccess={handleCopySuccess} />
-            </div>
-
-            {payload.author && (
-              <section className="sub-card">
-                <h3>👤 代码提交者</h3>
-                <div className="card-grid">
-                  <InfoRow label="👨‍💻 姓名" value={payload.author.name} onCopySuccess={handleCopySuccess} />
-                  <InfoRow label="📧 邮箱" value={payload.author.email} onCopySuccess={handleCopySuccess} />
-                  <InfoRow label="⏰ 最后提交时间" value={formatDate(payload.author.lastCommitTime)} onCopySuccess={handleCopySuccess} />
-                  <InfoRow label="📁 文件位置" value={formatFileLocation(payload.author)} onCopySuccess={handleCopySuccess} />
-                  <InfoRow label="💡 提交信息" value={payload.author.commitMessage} onCopySuccess={handleCopySuccess} />
-                </div>
-              </section>
-            )}
-
-            {payload.codeContext && (
-              <section className="sub-card">
-                <div className="editable-header">
-                  <h3>📝 代码上下文</h3>
-                  <div className="edit-actions">
-                    {editingCodeContext ? (
-                      <>
-                        <button
-                          type="button"
-                          className="edit-button save"
-                          onClick={handleSaveCodeContext}
-                        >
-                          ✅ 保存
-                        </button>
-                        <button
-                          type="button"
-                          className="edit-button cancel"
-                          onClick={handleCancelCodeContext}
-                        >
-                          ❌ 取消
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        className="edit-button"
-                        onClick={handleEditCodeContext}
-                      >
-                        ✏️ 编辑
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {editingCodeContext ? (
-                  <textarea
-                    className="code-editor"
-                    value={codeContextDraft}
-                    onChange={e => setCodeContextDraft(e.target.value)}
-                  />
-                ) : (
-                  <pre className="code-block">
-                    <code>{payload.codeContext}</code>
-                  </pre>
-                )}
-              </section>
-            )}
-
-            {payload.stacktrace && (
-              <section className="sub-card">
-                <div className="editable-header">
-                  <h3>📚 堆栈信息</h3>
-                  <div className="edit-actions">
-                    {editingStacktrace ? (
-                      <>
-                        <button
-                          type="button"
-                          className="edit-button save"
-                          onClick={handleSaveStacktrace}
-                        >
-                          ✅ 保存
-                        </button>
-                        <button
-                          type="button"
-                          className="edit-button cancel"
-                          onClick={handleCancelStacktrace}
-                        >
-                          ❌ 取消
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        className="edit-button"
-                        onClick={handleEditStacktrace}
-                      >
-                        ✏️ 编辑
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {editingStacktrace ? (
-                  <textarea
-                    className="code-editor"
-                    value={stacktraceDraft}
-                    onChange={e => setStacktraceDraft(e.target.value)}
-                  />
-                ) : (
-                  <pre className="code-block">
-                    <code>{payload.stacktrace}</code>
-                  </pre>
-                )}
-              </section>
-            )}
-
-            <section className="sub-card">
-              <div className="editable-header">
-                <h3>📌 其他补充</h3>
-                <div className="edit-actions">
-                  {editingAdditionalInfo ? (
-                    <>
-                      <button
-                        type="button"
-                        className="edit-button save"
-                        onClick={handleSaveAdditionalInfo}
-                      >
-                        ✅ 保存
-                      </button>
-                      <button
-                        type="button"
-                        className="edit-button cancel"
-                        onClick={handleCancelAdditionalInfo}
-                      >
-                        ❌ 取消
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className="edit-button"
-                      onClick={handleEditAdditionalInfo}
-                    >
-                      {payload?.additionalInfo ? '✏️ 编辑' : '➕ 添加'}
-                    </button>
-                  )}
-                </div>
-              </div>
-              {editingAdditionalInfo ? (
-                <textarea
-                  className="code-editor"
-                  value={additionalInfoDraft}
-                  onChange={e => setAdditionalInfoDraft(e.target.value)}
-                  placeholder="在此添加其他补充信息，例如：&#10;- pom.xml 依赖配置&#10;- application.yml 配置&#10;- 环境变量&#10;- 相关日志&#10;- 其他上下文信息"
-                />
-              ) : payload?.additionalInfo ? (
-                <pre className="code-block">
-                  <code>{payload.additionalInfo}</code>
-                </pre>
-              ) : (
-                <p className="empty-hint">
-                  点击&quot;添加&quot;按钮补充其他信息（如 pom.xml 依赖、配置文件等），帮助 AI 更准确地分析问题。
-                </p>
-              )}
-            </section>
-          </section>
+          <ExceptionCard payload={payload} onCopySuccess={handleCopySuccess} />
         ) : null}
 
-        <section className="card chat-panel">
-          <header className="card-header">
-            <div>
-              <h2>💬 对话分析</h2>
-              <p className="hint">
-                根据异常上下文向 AI 提问，获取进一步的定位与修复建议。
-              </p>
-            </div>
-            <div className="header-actions">
-              <a
-                className="github-link"
-                href="https://github.com/GuangYiDing/exception-notify"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="查看 GitHub 仓库"
-                title="GitHub"
-              >
-                <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
-                  <path
-                    fill="currentColor"
-                    d="M12 0a12 12 0 0 0-3.79 23.4c.6.11.82-.26.82-.58v-2c-3.34.73-4.04-1.61-4.04-1.61a3.18 3.18 0 0 0-1.34-1.75c-1.1-.76.08-.75.08-.75a2.5 2.5 0 0 1 1.84 1.24 2.54 2.54 0 0 0 3.46 1 2.52 2.52 0 0 1 .76-1.6c-2.67-.3-5.47-1.34-5.47-5.95a4.67 4.67 0 0 1 1.24-3.24 4.3 4.3 0 0 1 .12-3.2s1-.32 3.28 1.24a11.29 11.29 0 0 1 6 0c2.28-1.56 3.27-1.24 3.27-1.24a4.3 4.3 0 0 1 .12 3.2 4.67 4.67 0 0 1 1.24 3.24c0 4.62-2.81 5.64-5.49 5.94a2.83 2.83 0 0 1 .81 2.2v3.27c0 .32.22.7.82.58A12 12 0 0 0 12 0Z"
-                  />
-                </svg>
-              </a>
-              <button className="settings-button" onClick={() => setSettingsOpen(v => !v)}>
-                {settingsOpen ? '❌ 关闭设置' : '⚙️ 打开设置'}
-              </button>
-            </div>
-          </header>
-          <div className="chat-window" ref={chatWindowRef}>
-            {messages.map((message, index) => {
-              const collapsible = isCollapsibleMessage(message);
-              const collapsed =
-                collapsedMessages[index] !== undefined
-                  ? collapsedMessages[index]
-                  : (message.role === 'system' ? true : collapsible);
-              const preview = collapsible ? buildPreview(message.content) : null;
-
-              return (
-                <article
-                  key={index}
-                  className={`chat-message ${message.role}${collapsible ? ' collapsible' : ''}${
-                    collapsed ? ' collapsed' : ''
-                  }`}
-                >
-                  <div className="message-header">
-                    <span className="role-label">{roleLabel(message.role)}</span>
-                    <div className="message-actions">
-                      <button
-                        type="button"
-                        className="copy-button"
-                        onClick={() => copyToClipboard(message.content, index)}
-                        title="复制内容"
-                      >
-                        {copiedIndex === index ? '✅ 已复制' : '📋 复制'}
-                      </button>
-                      {message.role === 'assistant' && !isSending && (
-                        <button
-                          type="button"
-                          className="regenerate-button"
-                          onClick={() => handleRegenerate(index)}
-                          title="重新生成回答"
-                        >
-                          🔄 重新生成
-                        </button>
-                      )}
-                      {collapsible && (
-                        <button
-                          type="button"
-                          className="collapse-button"
-                          onClick={() => toggleCollapsed(index, collapsed)}
-                        >
-                          {collapsed ? '📂 展开' : '📁 收起'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {message.reasoning && (
-                    <div className="reasoning-section">
-                      <button
-                        type="button"
-                        className="reasoning-toggle"
-                        onClick={() => {
-                          setReasoningCollapsed(prev => ({
-                            ...prev,
-                            [index]: !prev[index]
-                          }));
-                        }}
-                      >
-                        <span className="reasoning-icon">🧠</span>
-                        <span>思考过程</span>
-                        <span className="toggle-arrow">
-                          {reasoningCollapsed[index] ? '▼' : '▲'}
-                        </span>
-                      </button>
-                      {!reasoningCollapsed[index] && (
-                        <div className="reasoning-content">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkGfm]}
-                            rehypePlugins={[rehypeHighlight]}
-                          >
-                            {message.reasoning}
-                          </ReactMarkdown>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="message-content">
-                    {collapsible && collapsed ? (
-                      <p className="collapsed-preview">{preview}</p>
-                    ) : message.role === 'assistant' ? (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeHighlight]}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    ) : (
-                      message.content.split('\n').map((line, lineIndex) => (
-                        <p key={lineIndex}>{line}</p>
-                      ))
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-            {(streamingContent || streamingReasoning) && (
-              <article className="chat-message assistant streaming">
-                <div className="message-header">
-                  <span className="role-label">🤖 AI</span>
-                  <span className="streaming-indicator">正在生成...</span>
-                </div>
-                {streamingReasoning && (
-                  <div className="reasoning-section">
-                    <button
-                      type="button"
-                      className="reasoning-toggle"
-                      onClick={() => setStreamingReasoningCollapsed(!streamingReasoningCollapsed)}
-                    >
-                      <span className="reasoning-icon">🧠</span>
-                      <span>思考中...</span>
-                      <span className="toggle-arrow">
-                        {streamingReasoningCollapsed ? '▼' : '▲'}
-                      </span>
-                    </button>
-                    {!streamingReasoningCollapsed && (
-                      <div className="reasoning-content">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight]}
-                        >
-                          {streamingReasoning}
-                        </ReactMarkdown>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {streamingContent && (
-                  <div className="message-content">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeHighlight]}
-                    >
-                      {streamingContent}
-                    </ReactMarkdown>
-                  </div>
-                )}
-              </article>
-            )}
-          </div>
-          <form className="chat-form" onSubmit={handleSubmit}>
-            <div className="input-wrapper">
-              <textarea
-                placeholder="描述你想了解的问题，按 Ctrl+Enter 发送"
-                value={input}
-                onChange={event => setInput(event.target.value)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-                    event.preventDefault();
-                    handleSubmit(event);
-                  }
-                }}
-              />
-              <button type="submit" disabled={isSending} className="send-button">
-                {isSending ? '🔄 发送中...' : '🚀 发送'}
-              </button>
-            </div>
-          </form>
-          {sendError && <div className="error-banner">{sendError}</div>}
-        </section>
+        <ChatPanel
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          isSending={isSending}
+          sendError={sendError}
+          chatWindowRef={chatWindowRef}
+          copiedIndex={copiedIndex}
+          collapsedMessages={collapsedMessages}
+          reasoningCollapsed={reasoningCollapsed}
+          streamingContent={streamingContent}
+          streamingReasoning={streamingReasoning}
+          streamingReasoningCollapsed={streamingReasoningCollapsed}
+          settingsOpen={settingsOpen}
+          onSubmit={handleSubmit}
+          onCopy={copyToClipboard}
+          onRegenerate={handleRegenerate}
+          onToggleCollapse={toggleCollapsed}
+          onToggleReasoningCollapse={(i: number, c: boolean) => setReasoningCollapsed(prev => ({ ...prev, [i]: !c }))}
+          onToggleSettings={() => setSettingsOpen(v => !v)}
+          onToggleStreamingReasoningCollapse={() => setStreamingReasoningCollapsed(v => !v)}
+        />
       </main>
     </div>
   );
-}
-
-type InfoRowProps = {
-  label: string;
-  value?: string | number | null;
-  onCopySuccess?: () => void;
-};
-
-function InfoRow({ label, value, onCopySuccess }: InfoRowProps) {
-  if (value === undefined || value === null || value === '') {
-    return null;
-  }
-
-  const text = String(value);
-
-  const handleDoubleClick = async () => {
-    try {
-      await navigator.clipboard.writeText(text);
-      onCopySuccess?.();
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
-
-  return (
-    <div className="info-row">
-      <span className="info-label">{label}</span>
-      <span
-        className="info-value"
-        title={`${text}\n\n💡 双击复制`}
-        onDoubleClick={handleDoubleClick}
-      >
-        {text}
-      </span>
-    </div>
-  );
-}
-
-function buildSummaryPrompt(payload: AiAnalysisPayload): string | null {
-  if (!payload) {
-    return null;
-  }
-  const lines: string[] = ['[异常概览]', `应用：${payload.appName ?? '未知'}`];
-  if (payload.environment) {
-    lines.push(`环境：${payload.environment}`);
-  }
-  if (payload.exceptionType) {
-    lines.push(`类型：${payload.exceptionType}`);
-  }
-  if (payload.exceptionMessage) {
-    lines.push(`描述：${payload.exceptionMessage}`);
-  }
-  if (payload.location) {
-    lines.push(`位置：${payload.location}`);
-  }
-  if (payload.traceId) {
-    lines.push(`Trace ID：${payload.traceId}`);
-  }
-  if (payload.traceUrl) {
-    lines.push(`Trace URL：${payload.traceUrl}`);
-  }
-
-  if (payload.codeContext) {
-    lines.push('\n[代码上下文]', payload.codeContext);
-  }
-  if (payload.stacktrace) {
-    lines.push('\n[堆栈信息]', limitLines(payload.stacktrace, 40));
-  }
-  if (payload.author) {
-    lines.push(
-      '\n[代码作者]',
-      [
-        payload.author.name && `姓名：${payload.author.name}`,
-        payload.author.email && `邮箱：${payload.author.email}`,
-        payload.author.commitMessage && `提交：${payload.author.commitMessage}`
-      ]
-        .filter(Boolean)
-        .join('；')
-    );
-  }
-  if (payload.additionalInfo) {
-    lines.push('\n[其他补充]', payload.additionalInfo);
-  }
-  return lines.filter(Boolean).join('\n');
-}
-
-function limitLines(text: string, maxLines: number): string {
-  const lines = text.split('\n');
-  if (lines.length <= maxLines) {
-    return text;
-  }
-  return `${lines.slice(0, maxLines).join('\n')}\n...（后续合计 ${lines.length - maxLines} 行已省略）`;
-}
-
-function formatDate(value?: string | null): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString();
-}
-
-function formatFileLocation(author?: AiAnalysisPayload['author']): string | undefined {
-  if (!author) {
-    return undefined;
-  }
-  if (!author.fileName) {
-    return undefined;
-  }
-  if (typeof author.lineNumber === 'number' && author.lineNumber > 0) {
-    return `${author.fileName}:${author.lineNumber}`;
-  }
-  return author.fileName;
-}
-
-function roleLabel(role: ChatMessage['role']): string {
-  switch (role) {
-    case 'assistant':
-      return '🤖 AI';
-    case 'user':
-      return '👤 你';
-    case 'system':
-      return '⚙️ 系统';
-    default:
-      return role;
-  }
-}
-
-function formatApiError(status: number, statusText: string, body: string): string {
-  const snippet = body ? body.slice(0, 200) : '';
-  if (status === 401) {
-    return '401 未授权：请检查 API Key 是否填写正确。';
-  }
-  if (status === 404) {
-    return '404 未找到接口：请确认 Endpoint / 模型路径配置是否正确。' + (snippet ? ` 服务器返回：${snippet}` : '');
-  }
-  if (status === 429) {
-    return '429 频率受限：请稍后重试或降低调用频率。';
-  }
-  if (status >= 500) {
-    return `服务端错误 ${status}：${statusText || ''}`.trim() + (snippet ? `，响应内容：${snippet}` : '');
-  }
-  return `调用失败 ${status}${statusText ? ' ' + statusText : ''}${snippet ? `：${snippet}` : ''}`;
-}
-
-function isCollapsibleMessage(message: ChatMessage): boolean {
-  if (message.role === 'system') {
-    return true;
-  }
-  if (message.role === 'user' && message.content.startsWith('[异常概览]')) {
-    return true;
-  }
-  return false;
-}
-
-function buildPreview(content: string): string {
-  const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
-  if (lines.length <= 2) {
-    return lines.join(' ');
-  }
-  return `${lines.slice(0, 2).join(' ')} …`;
 }
